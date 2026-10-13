@@ -1,0 +1,709 @@
+{
+  "generatedAt": "2026-10-09T14:03:42.936Z",
+  "collections": [
+    {
+      "name": "users",
+      "type": "auth",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (id = @request.auth.id || (empresa_id != '' && empresa_id = @request.auth.empresa_id))",
+        "view": "@request.auth.id != '' && (id = @request.auth.id || (empresa_id != '' && empresa_id = @request.auth.empresa_id))",
+        "create": "@request.body.role:isset = false",
+        "update": "id = @request.auth.id && @request.body.role:isset = false",
+        "delete": "id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "avatar",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["administrador", "operador", "leitura"]
+        },
+        {
+          "name": "empresa_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "empresas"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ]
+    },
+    {
+      "name": "contas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)",
+        "view": "@request.auth.id != '' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)",
+        "create": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "update": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != '' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'administrador' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["caixa", "banco", "cartao"]
+        },
+        {
+          "name": "saldo_inicial",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "empresa_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "empresas"
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_contas_usuario ON contas (usuario_id)"]
+    },
+    {
+      "name": "categorias",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "update": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'administrador'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["receita", "despesa"]
+        },
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "grupo_dre",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "receita_bruta",
+            "deducoes_tributos",
+            "custos_variaveis",
+            "despesas_operacionais",
+            "investimento_capex",
+            "receita_financeira",
+            "despesa_financeira"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_categorias_usuario ON categorias (usuario_id)",
+        "CREATE UNIQUE INDEX idx_categorias_unique_nome_tipo_ci ON categorias (LOWER(TRIM(nome)), tipo)"
+      ]
+    },
+    {
+      "name": "centros_custo",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "update": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'administrador'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_centros_custo_usuario ON centros_custo (usuario_id)"]
+    },
+    {
+      "name": "configuracoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && @request.auth.role = 'administrador'",
+        "update": "@request.auth.id != '' && @request.auth.role = 'administrador'",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'administrador'"
+      },
+      "fields": [
+        {
+          "name": "chave",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "valor",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_configuracoes_usuario_chave ON configuracoes (usuario_id, chave)"
+      ]
+    },
+    {
+      "name": "lancamentos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)",
+        "view": "@request.auth.id != '' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)",
+        "create": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["receita", "despesa"]
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "categoria",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "centro_custo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "conta",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "competencia",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data_lancamento",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data_vencimento",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_realizacao",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["realizado", "previsto", "estornado"]
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "estorno_de",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "lancamentos"
+        },
+        {
+          "name": "liquidacao_de",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "lancamentos"
+        },
+        {
+          "name": "empresa_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "empresas"
+        },
+        {
+          "name": "departamento",
+          "type": "text",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_lancamentos_tipo ON lancamentos (tipo)",
+        "CREATE INDEX idx_lancamentos_categoria ON lancamentos (categoria)",
+        "CREATE INDEX idx_lancamentos_competencia ON lancamentos (competencia)",
+        "CREATE INDEX idx_lancamentos_status ON lancamentos (status)",
+        "CREATE INDEX idx_lancamentos_usuario ON lancamentos (usuario_id)",
+        "CREATE INDEX `idx_lancamentos_liquidacao` ON `lancamentos` (liquidacao_de)",
+        "CREATE INDEX `idx_lancamentos_empresa` ON `lancamentos` (empresa_id)"
+      ]
+    },
+    {
+      "name": "auditoria",
+      "type": "base",
+      "apiRules": {
+        "list": null,
+        "view": null,
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "acao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "detalhes",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "referencia_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_auditoria_usuario ON auditoria (usuario_id)",
+        "CREATE INDEX idx_auditoria_acao ON auditoria (acao)",
+        "CREATE INDEX idx_auditoria_referencia ON auditoria (referencia_id)"
+      ]
+    },
+    {
+      "name": "empresas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (usuario_id = @request.auth.id || id = @request.auth.empresa_id)",
+        "view": "@request.auth.id != '' && (usuario_id = @request.auth.id || id = @request.auth.empresa_id)",
+        "create": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "update": "@request.auth.id != '' && @request.auth.role = 'administrador'",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'administrador'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "cnpj",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "padrao",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_empresas_usuario ON empresas (usuario_id)"]
+    },
+    {
+      "name": "patrimonio",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)",
+        "view": "@request.auth.id != '' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)",
+        "create": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "update": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != '' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'administrador' && ((empresa_id != '' && empresa_id = @request.auth.empresa_id) || usuario_id = @request.auth.id)"
+      },
+      "fields": [
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["ativo", "passivo"]
+        },
+        {
+          "name": "categoria",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "valor",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data_referencia",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "empresa_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "empresas"
+        },
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_patrimonio_usuario ON patrimonio (usuario_id)",
+        "CREATE INDEX idx_patrimonio_tipo ON patrimonio (tipo)"
+      ]
+    },
+    {
+      "name": "departamentos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "update": "@request.auth.id != '' && @request.auth.role != 'leitura' && @request.auth.role != ''",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'administrador'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_departamentos_usuario ON departamentos (usuario_id)"]
+    },
+    {
+      "name": "master_security",
+      "type": "auth",
+      "apiRules": {
+        "list": null,
+        "view": null,
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "salt",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "token_secret",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "attempts_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "locked_until",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "updated_by",
+          "type": "text",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_tokenKey_pbc_1206371697` ON `master_security` (`tokenKey`)",
+        "CREATE UNIQUE INDEX `idx_email_pbc_1206371697` ON `master_security` (`email`) WHERE `email` != ''"
+      ]
+    }
+  ]
+}

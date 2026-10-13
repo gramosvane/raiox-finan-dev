@@ -1,0 +1,106 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+dev-dist
+dev-dist-ssr
+*.local
+.pnpm-store
+.pnpm
+
+# pods-manager atomic build operations (rename/restore leftovers).
+# AppManager creates these during build (set-aside previous output before
+# running pnpm build, restore on failure). Success path cleans them up;
+# failure paths may leave orphans. Always ignore them in version control +
+# in the sandbox memGit hydration (see ProjectSandbox.hydrate).
+*.bak-*
+*.legacy-bak-*
+*.failed-*
+*.tmp
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# PocketBase local server data and runtime binaries (na raiz)
+# Ignora APENAS o executável binário e o diretório de dados em tempo de execução
+/pb_data/
+/pb_data
+/pb_public/
+/pb_public
+/pocketbase
+/pocketbase.exe
+pocketbase.zip
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+backups/
+*.zip
+*.tar.gz
+*.tgz
+
+# server/pb_hooks e server/pb_migrations NÃO devem ser ignorados
+!server/
+!server/**
+# Diretório pocketbase/ legado removido; pocketbase na raiz é apenas o executável binário (ignorado na linha 46)
+
+# Binaries and document uploads that shouldn't be tracked
+*.docx
+*.xlsx
+*.pptx
+*.pdf
+
+# Evaluation screenshots
+screenshot.png
+.eslintcache
+.oxlintcache
+
+# Lockfiles alternativos não utilizados
+bun.lockb
+pnpm-lock.yaml
+pnpm-workspace.yaml
+yarn.lock
+package-lock.json.bak
+package-lock.json.tmp
+*.orig
+*.rej
+*.conflict
+*.merge
+*.lock
+
+# Environment variables (.env não deve ser versionado no Git)
+.env
+.env.*
+!.env.example
+!env.example
+
+# Linux kernel core dumps (e.g. when oxfmt or pnpm crash)
+core.[0-9]*
+
+package-lock.json
+
+# Links e cópias criados pela instalação de produção
+/pb_hooks
+/pb_migrations
+/pb_data.antes-restauracao-*
+
+# Copias de seguranca criadas por deploy/preparar-producao.sh quando index.html foi alterado
+index.html.divergente-*

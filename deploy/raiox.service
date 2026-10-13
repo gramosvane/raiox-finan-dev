@@ -1,0 +1,28 @@
+# Raio-X Financeiro - serviço automático do PocketBase (systemd)
+# Instalação: sudo cp /opt/raiox/app/deploy/raiox.service /etc/systemd/system/raiox.service
+#             sudo systemctl daemon-reload && sudo systemctl enable --now raiox
+# O sistema responde só dentro do servidor (127.0.0.1:8090). O acesso externo
+# passa pelo Cloudflare Tunnel; nenhuma porta é aberta no roteador.
+[Unit]
+Description=Raio-X Financeiro (PocketBase)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=raiox
+Group=raiox
+WorkingDirectory=/opt/raiox/app
+ExecStart=/opt/raiox/app/pocketbase serve --http=127.0.0.1:8090
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/raiox/app/pb_data
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
