@@ -43,12 +43,27 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
   const [motivoInatividade, setMotivoInatividade] = useState<string | null>(null)
+  const [precisaPrimeiroAcesso, setPrecisaPrimeiroAcesso] = useState(false)
 
   useEffect(() => {
     // Consumir aviso de inatividade se existir
     const msg = consumirMotivoEncerramento()
     if (msg) {
       setMotivoInatividade(msg)
+    }
+  }, [])
+
+  useEffect(() => {
+    let ativo = true
+    pb.send<{ success: boolean; inicializado: boolean }>('/backend/v1/setup/status', {
+      method: 'GET',
+    })
+      .then((res) => {
+        if (ativo && res && res.inicializado === false) setPrecisaPrimeiroAcesso(true)
+      })
+      .catch(() => {})
+    return () => {
+      ativo = false
     }
   }, [])
 
@@ -140,6 +155,14 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
+              {precisaPrimeiroAcesso && (
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center justify-between gap-2 font-medium">
+                  <span>Sistema novo: ainda não há administrador.</span>
+                  <Link to="/primeiro-acesso" className="text-blue-700 underline font-semibold">
+                    Fazer o primeiro acesso
+                  </Link>
+                </div>
+              )}
               {motivoInatividade && (
                 <div
                   data-testid="aviso-inatividade"

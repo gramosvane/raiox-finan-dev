@@ -13,6 +13,7 @@ import { EsqueciSenhaPage } from '@/pages/auth/EsqueciSenhaPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
 import { ConfirmEmailChangePage } from '@/pages/auth/ConfirmEmailChangePage'
+import { PrimeiroAcessoPage } from '@/pages/auth/PrimeiroAcessoPage'
 
 // Páginas Protegidas
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
@@ -36,6 +37,7 @@ const App = () => (
             {/* Rotas Públicas de Acesso */}
             <Route path="/" element={<LoginPage />} />
             <Route path="/cadastro" element={<CadastroPage />} />
+            <Route path="/primeiro-acesso" element={<PrimeiroAcessoPage />} />
             <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
