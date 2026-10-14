@@ -26,6 +26,12 @@ import { AlertCircle, Loader2, UserPlus } from 'lucide-react'
 
 type Cargo = 'administrador' | 'operador' | 'leitura'
 
+interface PermissaoLinha {
+  id: string
+  chave: string
+  valor: string
+}
+
 interface UsuarioLinha {
   id: string
   name?: string
@@ -47,6 +53,7 @@ export const UsuariosPage: React.FC = () => {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [permissao, setPermissao] = useState<PermissaoLinha | null>(null)
 
   const [nome, setNome] = useState('')
   const [usuario, setUsuario] = useState('')
@@ -61,6 +68,12 @@ export const UsuariosPage: React.FC = () => {
     try {
       const itens = await pb.collection('users').getFullList<UsuarioLinha>({ sort: 'created' })
       setLista(itens)
+      try {
+        const perms = await pb.collection('permissoes').getFullList<PermissaoLinha>()
+        setPermissao(perms.find((p) => p.chave === 'operador_cadastros') || null)
+      } catch {
+        setPermissao(null)
+      }
     } catch (err: any) {
       setErro(err?.message || 'Não foi possível carregar os usuários.')
     } finally {
@@ -108,6 +121,21 @@ export const UsuariosPage: React.FC = () => {
       else setErro('Não foi possível criar o usuário. Verifique os dados.')
     } finally {
       setSalvando(false)
+    }
+  }
+
+  const mudarPermissao = async (valor: string) => {
+    if (!permissao) return
+    try {
+      await pb.collection('permissoes').update(permissao.id, { valor })
+      setPermissao({ ...permissao, valor })
+      toast({ title: 'Permissão atualizada' })
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível alterar a permissão',
+        description: err?.response?.message || err?.message || 'Tente novamente.',
+      })
     }
   }
 
@@ -207,6 +235,36 @@ export const UsuariosPage: React.FC = () => {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Permissões do cargo Operador</CardTitle>
+          <CardDescription>
+            Define se o Operador pode alterar cadastros (contas, categorias, departamentos,
+            patrimônio e empresas). Em qualquer opção o Operador continua registrando lançamentos. A
+            regra é aplicada no servidor.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {permissao ? (
+            <Select value={permissao.valor} onValueChange={mudarPermissao}>
+              <SelectTrigger className="w-full md:w-96">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="liberado">Operador pleno: pode alterar cadastros</SelectItem>
+                <SelectItem value="restrito">
+                  Operador limitado: só lança, não altera cadastros
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-slate-500">
+              Permissões ainda não disponíveis neste servidor.
+            </p>
+          )}
         </CardContent>
       </Card>
 
