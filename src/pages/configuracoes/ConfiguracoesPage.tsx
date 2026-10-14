@@ -1063,6 +1063,9 @@ export const ConfiguracoesPage: React.FC = () => {
                                 <SelectItem value="receita_financeira">
                                   Receita Financeira (Juros / Rendimentos)
                                 </SelectItem>
+                                <SelectItem value="fora_resultado">
+                                  Fora do resultado (Transferência entre contas)
+                                </SelectItem>
                               </>
                             ) : (
                               <>
@@ -1080,6 +1083,9 @@ export const ConfiguracoesPage: React.FC = () => {
                                 </SelectItem>
                                 <SelectItem value="despesa_financeira">
                                   Despesa Financeira (Juros Bancários / Tarifas)
+                                </SelectItem>
+                                <SelectItem value="fora_resultado">
+                                  Fora do resultado (Retirada de sócio / Transferência)
                                 </SelectItem>
                               </>
                             )}
@@ -1203,6 +1209,7 @@ export const ConfiguracoesPage: React.FC = () => {
                                 {cat.grupo_dre === 'investimento_capex' && 'CAPEX'}
                                 {cat.grupo_dre === 'receita_financeira' && 'Receita Financeira'}
                                 {cat.grupo_dre === 'despesa_financeira' && 'Despesa Financeira'}
+                                {cat.grupo_dre === 'fora_resultado' && 'Fora do resultado'}
                               </Badge>
                             )}
 
@@ -1356,6 +1363,9 @@ export const ConfiguracoesPage: React.FC = () => {
                                 <SelectItem value="receita_financeira">
                                   Receita Financeira (Juros / Rendimentos)
                                 </SelectItem>
+                                <SelectItem value="fora_resultado">
+                                  Fora do resultado (Transferência entre contas)
+                                </SelectItem>
                               </>
                             ) : (
                               <>
@@ -1373,6 +1383,9 @@ export const ConfiguracoesPage: React.FC = () => {
                                 </SelectItem>
                                 <SelectItem value="despesa_financeira">
                                   Despesa Financeira (Juros Bancários / Tarifas)
+                                </SelectItem>
+                                <SelectItem value="fora_resultado">
+                                  Fora do resultado (Retirada de sócio / Transferência)
                                 </SelectItem>
                               </>
                             )}

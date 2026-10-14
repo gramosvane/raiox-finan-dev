@@ -25,6 +25,7 @@ import { RelatoriosPage } from '@/pages/relatorios/RelatoriosPage'
 import { AuditoriaPage } from '@/pages/auditoria/AuditoriaPage'
 import { ConfiguracoesPage } from '@/pages/configuracoes/ConfiguracoesPage'
 import { UsuariosPage } from '@/pages/usuarios/UsuariosPage'
+import { FechamentoCaixaPage } from '@/pages/fechamento/FechamentoCaixaPage'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/auditoria" element={<AuditoriaPage />} />
               <Route path="/configuracoes" element={<ConfiguracoesPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
+              <Route path="/fechamento-caixa" element={<FechamentoCaixaPage />} />
             </Route>
 
             {/* 404 Not Found */}

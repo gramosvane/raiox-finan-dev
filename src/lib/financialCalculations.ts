@@ -43,6 +43,7 @@ export type GrupoDRECalculo =
   | 'investimento_capex'
   | 'receita_financeira'
   | 'despesa_financeira'
+  | 'fora_resultado'
 
 export interface LancamentoCalculo {
   id?: string
@@ -296,6 +297,9 @@ export function calcularDRE(
       l.grupo_dre,
       l.departamento || l.centro_custo,
     )
+
+    // Retiradas de sócio e transferências entre contas: movimentam o caixa, mas ficam fora da DRE
+    if (grupo === 'fora_resultado') continue
 
     // Se o lançamento for um estorno (estorno_de presente), ele DEVE abater o grupo original
     const sinal = l.estorno_de ? -1 : 1

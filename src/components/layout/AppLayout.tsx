@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   Settings,
   Users,
+  Calculator,
   Menu,
   X,
   Bell,
@@ -122,6 +123,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       color: 'text-rose-600',
       activeBg: 'bg-rose-50 text-rose-700',
       hoverBg: 'hover:bg-rose-50/70',
+    },
+    {
+      title: 'Fechamento de caixa',
+      path: '/fechamento-caixa',
+      icon: Calculator,
+      color: 'text-teal-600',
+      activeBg: 'bg-teal-50 text-teal-700',
+      hoverBg: 'hover:bg-teal-50/70',
     },
     {
       title: 'Relatórios',

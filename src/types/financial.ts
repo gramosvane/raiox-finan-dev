@@ -94,6 +94,7 @@ export type GrupoDRE =
   | 'investimento_capex'
   | 'receita_financeira'
   | 'despesa_financeira'
+  | 'fora_resultado'
 
 export interface Categoria {
   id: string
