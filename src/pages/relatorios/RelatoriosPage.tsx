@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useCompetencia } from '@/contexts/CompetenciaContext'
 import { getLancamentos, getContas, getCategorias } from '@/services/financial'
+import { useBensDepreciacao } from '@/hooks/useBensDepreciacao'
+import { depreciacaoDoMes, depreciacaoAcumuladaAno } from '@/lib/depreciacao'
 import { Lancamento, Conta, Categoria } from '@/types/financial'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -49,6 +51,7 @@ export const RelatoriosPage: React.FC = () => {
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
+  const { bens: bensDepreciacao } = useBensDepreciacao()
 
   // Filtro de período do relatório: Mês Selecionado ou Acumulado do Ano
   const [tipoPeriodo, setTipoPeriodo] = useState<'mes' | 'ano'>('mes')
@@ -104,8 +107,12 @@ export const RelatoriosPage: React.FC = () => {
         categorias,
       ),
     }))
-    return calcularDRE(lancamentosComGrupo)
-  }, [lancamentosFiltrados, categorias])
+    const depreciacao =
+      tipoPeriodo === 'mes'
+        ? depreciacaoDoMes(bensDepreciacao, competencia)
+        : depreciacaoAcumuladaAno(bensDepreciacao, competencia)
+    return calcularDRE(lancamentosComGrupo, 'competencia', depreciacao)
+  }, [lancamentosFiltrados, categorias, bensDepreciacao, tipoPeriodo, competencia])
 
   // CÁLCULOS DE LIQUIDEZ (com aritmética em centavos)
   const liquidezData = useMemo(() => {

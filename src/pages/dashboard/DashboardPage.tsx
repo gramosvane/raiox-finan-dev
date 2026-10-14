@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCompetencia } from '@/contexts/CompetenciaContext'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useBensDepreciacao } from '@/hooks/useBensDepreciacao'
+import { depreciacaoDoMes } from '@/lib/depreciacao'
 import {
   getLancamentos,
   getContas,
@@ -539,8 +541,14 @@ export const DashboardPage: React.FC = () => {
       }))
   }, [lancamentosFiltradosEmpresa, competencia, categorias])
 
+  const { bens: bensDepreciacao } = useBensDepreciacao()
+  const depreciacaoMes = useMemo(
+    () => depreciacaoDoMes(bensDepreciacao, competencia),
+    [bensDepreciacao, competencia],
+  )
+
   const dreResumida = useMemo(() => {
-    const dreCalculada = calcularDRE(lancamentosMesParaDRE, 'competencia')
+    const dreCalculada = calcularDRE(lancamentosMesParaDRE, 'competencia', depreciacaoMes)
     const margemBruta =
       dreCalculada.receitaLiquida > 0
         ? (dreCalculada.margemContribuicao / dreCalculada.receitaLiquida) * 100
@@ -559,7 +567,7 @@ export const DashboardPage: React.FC = () => {
       investimentos: dreCalculada.investimentos,
       resultadoLiquido: dreCalculada.resultadoLiquido,
     }
-  }, [lancamentosMesParaDRE])
+  }, [lancamentosMesParaDRE, depreciacaoMes])
 
   // Linha informativa de previstos na DRE Resumida (FIN-05)
   const textoPrevistosDREResumida = useMemo(() => {

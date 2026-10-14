@@ -29,6 +29,8 @@ import { FechamentoCaixaPage } from '@/pages/fechamento/FechamentoCaixaPage'
 import { OrcamentoPage } from '@/pages/orcamento/OrcamentoPage'
 import { IndicadoresPage } from '@/pages/indicadores/IndicadoresPage'
 import { PlanoCategoriasPage } from '@/pages/plano/PlanoCategoriasPage'
+import { DepreciacaoPage } from '@/pages/depreciacao/DepreciacaoPage'
+import { RecorrenciasPage } from '@/pages/recorrencias/RecorrenciasPage'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -62,6 +64,8 @@ const App = () => (
               <Route path="/orcamento" element={<OrcamentoPage />} />
               <Route path="/indicadores" element={<IndicadoresPage />} />
               <Route path="/plano-categorias" element={<PlanoCategoriasPage />} />
+              <Route path="/depreciacao" element={<DepreciacaoPage />} />
+              <Route path="/recorrencias" element={<RecorrenciasPage />} />
             </Route>
 
             {/* 404 Not Found */}

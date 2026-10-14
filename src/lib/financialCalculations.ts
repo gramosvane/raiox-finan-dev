@@ -253,6 +253,7 @@ export function determinarGrupoDRE(
 export function calcularDRE(
   lancamentos: LancamentoCalculo[],
   regime: 'competencia' | 'caixa' = 'competencia',
+  depreciacaoPeriodo: number = 0,
 ): DRECalculada {
   // A DRE Gerencial opera por competência por padrão (inclui previstos e realizados, exceto estornados e liquidados duplicados)
   // Se regime === 'caixa', considera exclusivamente os realizados
@@ -287,7 +288,8 @@ export function calcularDRE(
   let outrasDespesasOp = 0
   let investimentos = 0 // CAPEX demonstrativo
   let despesasFinanceiras = 0
-  const depreciacaoAmortizacao = 0
+  // Depreciação gerencial do período (informada pelo chamador a partir dos bens cadastrados)
+  const depreciacaoAmortizacao = roundCents(Math.max(0, Number(depreciacaoPeriodo) || 0))
 
   for (const l of filtrados) {
     const v = roundCents(l.valor)
