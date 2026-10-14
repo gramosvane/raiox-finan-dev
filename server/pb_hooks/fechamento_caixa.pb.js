@@ -5,7 +5,7 @@
 // - esperado_dinheiro = total_sistema - (maquineta_pix + maquineta_credito + maquineta_debito)
 //                       - despesas_dinheiro
 // - diferenca = dinheiro_contado - esperado_dinheiro (negativo = falta; positivo = sobra).
-// - A auditoria é gravada na mesma transação; se falhar, o fechamento não é gravado.
+// - A auditoria é gravada na mesma transação (aberta no manipulador de requisição); se falhar, o fechamento não é gravado.
 // Não presume separação por forma de pagamento que a origem não entrega: PIX, crédito e débito
 // vêm do relatório da maquineta informado pelo operador.
 onRecordCreateRequest((e) => {
@@ -59,7 +59,16 @@ onRecordCreateRequest((e) => {
   rec.set('diferenca', arredonda2(v.dinheiro_contado - esperado))
   rec.set('usuario_id', e.auth.id)
   rec.set('empresa_id', empresaId || '')
-  e.next()
+  // A transação é aberta aqui: registro e auditoria (onRecordCreate) usam o mesmo escopo.
+  e.app.runInTransaction((txApp) => {
+    const original = e.app
+    e.app = txApp
+    try {
+      e.next()
+    } finally {
+      e.app = original
+    }
+  })
 }, 'fechamentos_caixa')
 
 onRecordCreate((e) => {

@@ -1,10 +1,36 @@
-// Auditoria e usuário do servidor para bens_depreciacao e recorrencias (lote 10).
+// Auditoria e usuário do servidor para bens_depreciacao e recorrencias (lote 10; atomicidade: lote 11).
 // - O usuário vem do servidor (não do cliente).
-// - Criação e alteração gravam auditoria na MESMA transação; se a auditoria falhar, nada é gravado.
+// - Criação e alteração gravam a auditoria na MESMA transação do registro: o manipulador de requisição
+//   abre a transação e o restante da cadeia (registro + auditoria) usa o mesmo escopo; se a auditoria
+//   falhar, nada é gravado.
 onRecordCreateRequest(
   (e) => {
     if (e.auth) e.record.set('usuario_id', e.auth.id)
-    e.next()
+    e.app.runInTransaction((txApp) => {
+      const original = e.app
+      e.app = txApp
+      try {
+        e.next()
+      } finally {
+        e.app = original
+      }
+    })
+  },
+  'bens_depreciacao',
+  'recorrencias',
+)
+
+onRecordUpdateRequest(
+  (e) => {
+    e.app.runInTransaction((txApp) => {
+      const original = e.app
+      e.app = txApp
+      try {
+        e.next()
+      } finally {
+        e.app = original
+      }
+    })
   },
   'bens_depreciacao',
   'recorrencias',
