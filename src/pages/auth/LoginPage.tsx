@@ -13,7 +13,17 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { DollarSign, Lock, Mail, ArrowRight, Loader2, ShieldCheck, AlertCircle } from 'lucide-react'
+import {
+  DollarSign,
+  Lock,
+  Mail,
+  ArrowRight,
+  Loader2,
+  ShieldCheck,
+  AlertCircle,
+  Eye,
+  EyeOff,
+} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
   sessaoExpiradaPorInatividade,
@@ -29,6 +39,7 @@ export const LoginPage: React.FC = () => {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
   const [motivoInatividade, setMotivoInatividade] = useState<string | null>(null)
@@ -182,12 +193,20 @@ export const LoginPage: React.FC = () => {
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-slate-50 border-slate-200 pl-9 text-slate-900 placeholder-slate-400 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-1"
+                    className="bg-slate-50 border-slate-200 pl-9 pr-10 text-slate-900 placeholder-slate-400 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-1"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
                 {errors.password && (
                   <p className="text-xs text-rose-600 font-medium mt-1">{errors.password}</p>
