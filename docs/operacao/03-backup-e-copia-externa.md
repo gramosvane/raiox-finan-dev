@@ -3,9 +3,11 @@
 O banco guarda lançamentos e auditoria **imutáveis**: é a única cópia dos dados da empresa. O código é recriável; o banco, não.
 
 ## Quando
+
 Todo dia útil com movimento (no mínimo) e **sempre antes de qualquer atualização**.
 
 ## Os 4 passos (cada um com critério de parada)
+
 1. **Gerar o backup no servidor** (pede a senha do `sudo` e a **senha do backup**, digitada duas vezes, mínimo 12 caracteres):
    ```bash
    ssh -t SERVIDOR "sudo RAIOX_PERMITIR_DESTINO_LOCAL=1 bash /opt/raiox/app/deploy/backup-usb.sh /var/backups/raiox-staging"
@@ -23,21 +25,27 @@ Todo dia útil com movimento (no mínimo) e **sempre antes de qualquer atualiza�
 4. **Registrar**: data/hora, arquivo, SHA-256, tamanho, quem fez, OK/FALHOU (`REGISTRO.txt` junto das cópias).
 
 ## Regra de falha
+
 - Qualquer passo falhou ou o SHA-256 divergiu: **o backup NÃO está concluído** e o dia **não está protegido**. Repita do passo 1.
 - Duas falhas seguidas: avisar o responsável técnico antes de continuar lançando.
 - Nunca apague a única cópia boa. Mantenha pelo menos os **7 últimos** backups verificados em cada disco.
 
 ## Teste de restauração (mensal e após cada atualização)
+
 Traga a **cópia do PC** de volta ao servidor e rode `restaurar.sh --teste` em pasta separada:
+
 ```bash
 sudo RAIOX_APP_DIR=/opt/raiox/app RAIOX_SERVICO=raiox bash /opt/raiox/app/deploy/restaurar.sh /caminho/ARQUIVO.tar.gz.gpg --teste /opt/raiox/teste-restauracao
 ```
+
 Aprovado quando: SHA-256 confere, `[OK]` byte a byte, totais conferem com o manifesto. Isso **não** toca no banco em uso.
 
 ## Custódia da senha do backup
+
 - Nunca no servidor, em scripts, logs, e-mail ou junto dos arquivos de backup.
 - Em papel, fora do servidor e do PC, com uma cópia com outra pessoa de confiança. Testar o acesso periodicamente (abrir um backup de teste).
 - **Sem a senha o backup não abre e não há recuperação.**
 
 ## Limites
+
 O PC não é mídia desconectada: falha simultânea do PC e do servidor (roubo, incêndio, ransomware que alcance os dois) não é coberta. Pen drive físico guardado em outro lugar é a proteção recomendada.

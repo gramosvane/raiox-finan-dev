@@ -1,12 +1,14 @@
 # 05 · Recuperação após perda ou formatação do servidor
 
 ## O que existe fora do servidor (e deve existir antes de precisar)
+
 - **Código:** este repositório, na tag de produção.
 - **Backups do banco:** cópias cifradas no PC (dois discos) e/ou pen drive, com `REGISTRO.txt`.
 - **Senha do backup:** em papel, com custódia do Owner e de uma segunda pessoa.
 - **Chave de acesso do administrador** e acesso ao GitHub.
 
 ## Ordem
+
 1. Instalar o Ubuntu Server 24.04 LTS (como em 01, seção 1) e preparar o host (`preparar-host.sh`).
 2. Gerar a nova chave de deploy e cadastrá-la no GitHub (a antiga pode ser revogada).
 3. Baixar a **mesma tag de produção** que estava em uso e rodar `instalar-producao.sh` **sem** `--ativar`.

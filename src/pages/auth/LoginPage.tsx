@@ -148,7 +148,7 @@ export const LoginPage: React.FC = () => {
 
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-xs text-slate-700 font-semibold">
-                  E-mail Corporativo
+                  E-mail ou Usuário
                 </Label>
                 <div className="relative">
                   <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
