@@ -27,6 +27,7 @@ export const PrimeiroAcessoPage: React.FC = () => {
   const [erro, setErro] = useState('')
 
   const [nome, setNome] = useState('')
+  const [usuario, setUsuario] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [confirma, setConfirma] = useState('')
@@ -61,6 +62,10 @@ export const PrimeiroAcessoPage: React.FC = () => {
     e.preventDefault()
     setErro('')
     if (!nome.trim()) return setErro('O nome é obrigatório.')
+    if (!/^[a-z0-9._-]{3,40}$/.test(usuario.trim().toLowerCase()))
+      return setErro(
+        'O usuário deve ter de 3 a 40 caracteres: letras, números, ponto, hífen ou sublinhado.',
+      )
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setErro('Informe um e-mail válido.')
     if (senha.length < 8) return setErro('A senha deve ter pelo menos 8 caracteres.')
     if (senha !== confirma) return setErro('As senhas digitadas não coincidem.')
@@ -71,6 +76,7 @@ export const PrimeiroAcessoPage: React.FC = () => {
         method: 'POST',
         body: {
           name: nome.trim(),
+          usuario: usuario.trim().toLowerCase(),
           email: email.trim(),
           password: senha,
           passwordConfirm: confirma,
@@ -169,6 +175,17 @@ export const PrimeiroAcessoPage: React.FC = () => {
                     Nome completo
                   </Label>
                   <Input id="pa-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pa-usuario" className="text-xs text-slate-700 font-semibold">
+                    Usuário (nome curto para entrar)
+                  </Label>
+                  <Input
+                    id="pa-usuario"
+                    value={usuario}
+                    autoComplete="username"
+                    onChange={(e) => setUsuario(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="pa-email" className="text-xs text-slate-700 font-semibold">

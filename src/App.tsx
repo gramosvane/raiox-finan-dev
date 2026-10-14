@@ -24,6 +24,7 @@ import { ContasPagarPage } from '@/pages/contas/ContasPagarPage'
 import { RelatoriosPage } from '@/pages/relatorios/RelatoriosPage'
 import { AuditoriaPage } from '@/pages/auditoria/AuditoriaPage'
 import { ConfiguracoesPage } from '@/pages/configuracoes/ConfiguracoesPage'
+import { UsuariosPage } from '@/pages/usuarios/UsuariosPage'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/auditoria" element={<AuditoriaPage />} />
               <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+              <Route path="/usuarios" element={<UsuariosPage />} />
             </Route>
 
             {/* 404 Not Found */}

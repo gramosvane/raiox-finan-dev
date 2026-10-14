@@ -1,6 +1,6 @@
 // Primeiro acesso: criação de USO ÚNICO do administrador master (Raio-X Financeiro)
 // - GET  /backend/v1/setup/status        -> { success, inicializado }  (público; só um booleano)
-// - POST /backend/v1/setup/administrador -> cria o 1º usuário; fecha-se sozinho depois de usado
+// - POST /backend/v1/setup/administrador -> cria o 1º usuário (name, usuario, email, password, passwordConfirm); fecha-se sozinho depois de usado
 // Regras: só funciona com ZERO usuários; o papel NUNCA vem do cliente (o hook users_role_create
 // define "administrador" para o primeiro usuário); fail-closed; sem senha em log nem em auditoria.
 // Criação do usuário e da auditoria na MESMA transação (padrão dos demais hooks): se qualquer
@@ -23,12 +23,20 @@ routerAdd('POST', '/backend/v1/setup/administrador', (e) => {
   const reqInfo = e.requestInfo()
   const body = reqInfo ? reqInfo.body || {} : {}
   const nome = typeof body.name === 'string' ? body.name.trim() : ''
+  const usuario = typeof body.usuario === 'string' ? body.usuario.trim().toLowerCase() : ''
   const email = typeof body.email === 'string' ? body.email.trim() : ''
   const senha = typeof body.password === 'string' ? body.password : ''
   const confirma = typeof body.passwordConfirm === 'string' ? body.passwordConfirm : ''
 
   if (!nome) {
     return e.json(400, { success: false, message: 'O nome é obrigatório.' })
+  }
+  if (!/^[a-z0-9._-]{3,40}$/.test(usuario)) {
+    return e.json(400, {
+      success: false,
+      message:
+        'O usuário deve ter de 3 a 40 caracteres: letras minúsculas, números, ponto, hífen ou sublinhado.',
+    })
   }
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return e.json(400, { success: false, message: 'Informe um e-mail válido.' })
@@ -51,6 +59,7 @@ routerAdd('POST', '/backend/v1/setup/administrador', (e) => {
       const col = txApp.findCollectionByNameOrId('users')
       const rec = new Record(col)
       rec.set('name', nome)
+      rec.set('usuario', usuario)
       rec.setEmail(email)
       rec.setPassword(senha)
       rec.setVerified(true)

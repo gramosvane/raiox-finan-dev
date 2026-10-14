@@ -78,10 +78,12 @@ export const LoginPage: React.FC = () => {
 
   const validate = () => {
     const errs: { email?: string; password?: string } = {}
-    if (!email) {
-      errs.email = 'O e-mail é obrigatório.'
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    if (!email.trim()) {
+      errs.email = 'Informe seu e-mail ou usuário.'
+    } else if (email.includes('@') && !/\S+@\S+\.\S+/.test(email)) {
       errs.email = 'Informe um e-mail válido.'
+    } else if (!email.includes('@') && !/^[A-Za-z0-9._-]{3,40}$/.test(email.trim())) {
+      errs.email = 'Informe um usuário válido (3 a 40 letras, números, ponto, hífen ou sublinhado).'
     }
     if (!password) {
       errs.password = 'A senha é obrigatória.'
@@ -100,7 +102,9 @@ export const LoginPage: React.FC = () => {
     setErrors({})
 
     try {
-      await pb.collection('users').authWithPassword(email.trim(), password)
+      await pb
+        .collection('users')
+        .authWithPassword(email.includes('@') ? email.trim() : email.trim().toLowerCase(), password)
       // Reiniciar a última atividade com o timestamp do login (A1)
       const agora = Date.now()
       registrarAtividade(agora)
@@ -188,8 +192,9 @@ export const LoginPage: React.FC = () => {
                   <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <Input
                     id="email"
-                    type="email"
-                    placeholder="voce@empresa.com.br"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="seu.usuario ou voce@empresa.com.br"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="bg-slate-50 border-slate-200 pl-9 text-slate-900 placeholder-slate-400 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-1"

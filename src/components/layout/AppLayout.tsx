@@ -24,6 +24,7 @@ import {
   FileSpreadsheet,
   ShieldCheck,
   Settings,
+  Users,
   Menu,
   X,
   Bell,
@@ -138,6 +139,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       activeBg: 'bg-amber-50 text-amber-700',
       hoverBg: 'hover:bg-amber-50/70',
     },
+    ...(user?.role === 'administrador'
+      ? [
+          {
+            title: 'Usuários',
+            path: '/usuarios',
+            icon: Users,
+            color: 'text-sky-600',
+            activeBg: 'bg-sky-50 text-sky-700',
+            hoverBg: 'hover:bg-sky-50/70',
+          },
+        ]
+      : []),
     {
       title: 'Configurações',
       path: '/configuracoes',
