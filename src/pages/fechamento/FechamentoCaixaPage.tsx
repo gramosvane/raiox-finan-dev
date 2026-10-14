@@ -299,8 +299,11 @@ export const FechamentoCaixaPage: React.FC = () => {
             <CardTitle className="text-lg">Limite de despesa por lançamento</CardTitle>
             <CardDescription>
               Despesas acima deste valor são apenas sinalizadas na conferência; nunca bloqueadas.
-              Deixe em branco para não sinalizar.
+              Deixe em branco (ou 0) para desligar a sinalização.
             </CardDescription>
+            <p className="text-sm font-medium text-slate-700">
+              {limite ? `Limite ativo: ${brl(limite)}` : 'Sem limite: sinalização desligada'}
+            </p>
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">
