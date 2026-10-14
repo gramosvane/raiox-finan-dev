@@ -28,6 +28,7 @@ import { UsuariosPage } from '@/pages/usuarios/UsuariosPage'
 import { FechamentoCaixaPage } from '@/pages/fechamento/FechamentoCaixaPage'
 import { OrcamentoPage } from '@/pages/orcamento/OrcamentoPage'
 import { IndicadoresPage } from '@/pages/indicadores/IndicadoresPage'
+import { PlanoCategoriasPage } from '@/pages/plano/PlanoCategoriasPage'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/fechamento-caixa" element={<FechamentoCaixaPage />} />
               <Route path="/orcamento" element={<OrcamentoPage />} />
               <Route path="/indicadores" element={<IndicadoresPage />} />
+              <Route path="/plano-categorias" element={<PlanoCategoriasPage />} />
             </Route>
 
             {/* 404 Not Found */}

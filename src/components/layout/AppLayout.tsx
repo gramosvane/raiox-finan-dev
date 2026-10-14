@@ -28,6 +28,7 @@ import {
   Calculator,
   Wallet,
   Activity,
+  ListTree,
   Menu,
   X,
   Bell,
@@ -165,6 +166,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       color: 'text-amber-600',
       activeBg: 'bg-amber-50 text-amber-700',
       hoverBg: 'hover:bg-amber-50/70',
+    },
+    {
+      title: 'Plano de categorias',
+      path: '/plano-categorias',
+      icon: ListTree,
+      color: 'text-lime-600',
+      activeBg: 'bg-lime-50 text-lime-700',
+      hoverBg: 'hover:bg-lime-50/70',
     },
     ...(user?.role === 'administrador'
       ? [
