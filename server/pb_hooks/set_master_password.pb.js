@@ -3,7 +3,7 @@
 // - Coleção dedicada "master_security" com regras nulas (inacessível pela API de coleções)
 // - Senha mestra protegida com KDF nativo (bcrypt do PocketBase via auth collection record.setPassword)
 // - Definir ou alterar a Senha Mestra SÓ POR ADMINISTRADOR
-// - Rate limiting / bloqueio por tentativas também neste endpoint (por usuário e por IP)
+// - Rate limiting / bloqueio por tentativas também neste endpoint, com a tentativa reservada em transação (lote 12)
 // - Segredo do token separado do hash
 // - Sem hash, salt ou senha em resposta, log ou auditoria
 routerAdd(
@@ -49,26 +49,54 @@ routerAdd(
     const now = Date.now()
     const clientIp = reqInfo ? reqInfo.remoteIP || '127.0.0.1' : '127.0.0.1'
 
-    // Buscar registro de segurança em master_security
-    let masterRecord = null
+    // Lote 12 (achado F1 do Claude Security): a tentativa é RESERVADA de forma atômica, em transação,
+    // ANTES do bcrypt, como no verify-master-password. Pedidos simultâneos não escapam do limite de 5.
+    let existe = false
+    let bloqueadoAgora = false
+    let lockedUntilAtual = 0
+    let tentativa = 0
     try {
-      masterRecord = $app.findFirstRecordByData('master_security', 'name', 'primary_master')
-    } catch (_) {}
+      $app.runInTransaction((txApp) => {
+        let rec = null
+        try {
+          rec = txApp.findFirstRecordByData('master_security', 'name', 'primary_master')
+        } catch (_) {
+          return
+        }
+        existe = true
+        const lockedUntil = rec.getInt('locked_until') || 0
+        if (lockedUntil > now) {
+          bloqueadoAgora = true
+          lockedUntilAtual = lockedUntil
+          return
+        }
+        if (!currentPassword) return
+        let attempts = rec.getInt('attempts_count') || 0
+        if (lockedUntil > 0 && lockedUntil <= now) attempts = 0
+        attempts += 1
+        rec.set('attempts_count', attempts)
+        rec.set('locked_until', attempts >= 5 ? now + 15 * 60 * 1000 : 0)
+        txApp.save(rec)
+        tentativa = attempts
+      })
+    } catch (_) {
+      return e.json(500, {
+        success: false,
+        message: 'Falha ao verificar o estado da Senha Mestra.',
+      })
+    }
 
-    // Checar bloqueio de tentativas por IP / Usuário
-    if (masterRecord) {
-      const lockedUntil = masterRecord.getInt('locked_until') || 0
-      if (lockedUntil > now) {
-        const remainingMins = Math.ceil((lockedUntil - now) / 60000)
-        return e.json(429, {
-          success: false,
-          message: `Muitas tentativas. Bloqueio ativo por mais ${remainingMins} minuto(s).`,
-        })
-      }
+    if (bloqueadoAgora) {
+      const remainingMins = Math.ceil((lockedUntilAtual - now) / 60000)
+      return e.json(429, {
+        success: false,
+        message: `Muitas tentativas. Bloqueio ativo por mais ${remainingMins} minuto(s).`,
+      })
     }
 
     // Se a senha já estiver configurada, exige validação segura da atual
-    if (masterRecord) {
+    let masterRecord = null
+    if (existe) {
       if (!currentPassword) {
         return e.json(400, {
           success: false,
@@ -76,15 +104,10 @@ routerAdd(
         })
       }
 
+      masterRecord = $app.findFirstRecordByData('master_security', 'name', 'primary_master')
       const isValid = masterRecord.validatePassword(currentPassword)
       if (!isValid) {
-        const currentAttempts = (masterRecord.getInt('attempts_count') || 0) + 1
-        const shouldLock = currentAttempts >= 5
-        const newLockedUntil = shouldLock ? now + 15 * 60 * 1000 : 0
-
-        masterRecord.set('attempts_count', currentAttempts)
-        masterRecord.set('locked_until', newLockedUntil)
-        $app.save(masterRecord)
+        const shouldLock = tentativa >= 5
 
         // Registrar falha na auditoria SEM registrar senhas ou dados sensíveis
         try {
@@ -95,7 +118,7 @@ routerAdd(
           auditRecord.set('descricao', 'Tentativa incorreta de alteração da Senha Mestra')
           auditRecord.set('detalhes', {
             ip: clientIp,
-            tentativas: currentAttempts,
+            tentativas: tentativa,
             bloqueado: shouldLock,
           })
           $app.save(auditRecord)
@@ -105,11 +128,10 @@ routerAdd(
           success: false,
           message: shouldLock
             ? 'Senha mestra atual incorreta. Limite excedido: bloqueado por 15 minutos.'
-            : `Senha mestra atual incorreta. Tentativa ${currentAttempts} de 5.`,
+            : `Senha mestra atual incorreta. Tentativa ${tentativa} de 5.`,
         })
       }
     }
-
     // Gerar salt e segredo de token criptográfico forte e separado do hash
     const newSalt = $security.randomString(32)
     const newTokenSecret = $security.randomString(64)

@@ -56,15 +56,24 @@ fi
 
 echo "[1/5] Conferindo a cópia (SHA-256) e abrindo o backup com a senha..."
 ( cd "$(dirname "$ARQUIVO")" && sha256sum -c "$(basename "$ARQUIVO").sha256" ) || falha "A cópia do backup está corrompida (SHA-256 não confere). Restauração cancelada."
+# Lote 12 (achado F3 do Claude Security): o arquivo precisa ser de fato cifrado por senha (gpg simétrico).
+# Um arquivo OpenPGP sem cifra (por exemplo feito com "gpg --store") abriria sem a senha e passaria
+# pelas demais conferências, que o próprio atacante poderia forjar. Por isso a estrutura é conferida.
+PACOTES="$(gpg --batch --list-packets "$ARQUIVO" 2>/dev/null || true)"
+printf '%s\n' "$PACOTES" | grep -q 'symkey enc packet' || falha "O arquivo não é um backup cifrado por senha. Restauração cancelada."
+printf '%s\n' "$PACOTES" | grep -q 'encrypted data packet' || falha "O arquivo não contém dados cifrados. Restauração cancelada."
+printf '%s\n' "$PACOTES" | grep -Eq 'mdc_method|aead' || falha "O arquivo cifrado não tem proteção de integridade. Restauração cancelada."
 read -r -s -p "Senha do backup: " SENHA; echo
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-if ! printf '%s' "$SENHA" | gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-fd 0 --decrypt -o "$TMP/pacote.tar.gz" "$ARQUIVO" 2>/dev/null; then
+if ! printf '%s' "$SENHA" | gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-fd 0 --status-fd 3 --decrypt -o "$TMP/pacote.tar.gz" "$ARQUIVO" 2>/dev/null 3>"$TMP/gpg.status"; then
     unset SENHA
     falha "Não foi possível abrir o backup: senha incorreta ou arquivo adulterado. Nada foi alterado."
 fi
 unset SENHA
+grep -q 'NEED_PASSPHRASE_SYM' "$TMP/gpg.status" || falha "O backup foi aberto sem usar a senha: arquivo não confiável. Restauração cancelada."
+grep -q 'DECRYPTION_OKAY' "$TMP/gpg.status" || falha "A integridade do backup não foi confirmada. Restauração cancelada."
 mkdir "$TMP/conteudo"
 tar -xzf "$TMP/pacote.tar.gz" -C "$TMP/conteudo"
 NOME="$(ls "$TMP/conteudo")"

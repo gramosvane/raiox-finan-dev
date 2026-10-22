@@ -313,23 +313,34 @@ export async function deleteItemPatrimonio(id: string): Promise<boolean> {
   return await pb.collection('patrimonio').delete(id)
 }
 
-// Token de auditoria em memória após validação de Senha Mestra
+// Token de auditoria em memória após validação de Senha Mestra.
+// Não sobrevive ao fim da sessão (logout ou inatividade) e vale 15 minutos no cliente.
+const VALIDADE_TOKEN_AUDITORIA_MS = 15 * 60 * 1000
 let sessionAuditToken: string | null = null
+let sessionAuditTokenEm = 0
 
 export function getSessionAuditToken(): string | null {
+  if (sessionAuditToken && Date.now() - sessionAuditTokenEm > VALIDADE_TOKEN_AUDITORIA_MS) {
+    sessionAuditToken = null
+  }
   return sessionAuditToken
 }
 
 export function setSessionAuditToken(token: string | null) {
   sessionAuditToken = token
+  sessionAuditTokenEm = token ? Date.now() : 0
 }
+
+pb.authStore?.onChange?.((novoToken: string) => {
+  if (!novoToken) setSessionAuditToken(null)
+})
 
 // Auditoria com proteção server-side real via Token JWT
 export async function getAuditoriaRegistros(
   token?: string,
   options?: { all?: boolean },
 ): Promise<AuditoriaRegistro[]> {
-  const activeToken = token || sessionAuditToken
+  const activeToken = token || getSessionAuditToken()
   if (!activeToken) {
     throw new Error(
       'Acesso à auditoria bloqueado. É necessária autorização via Senha Mestra Corporativa.',
@@ -368,7 +379,7 @@ export async function verifyMasterPassword(
     })
 
     if (res.authorized && res.auditToken) {
-      sessionAuditToken = res.auditToken
+      setSessionAuditToken(res.auditToken)
     }
     return {
       authorized: Boolean(res.authorized),
