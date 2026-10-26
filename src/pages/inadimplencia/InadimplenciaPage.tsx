@@ -85,7 +85,7 @@ export const InadimplenciaPage: React.FC = () => {
       </div>
 
       <Card>
-        <CardContent className="pt-6 flex flex-wrap items-end gap-4">
+        <CardContent className="pt-6 flex flex-wrap items-start gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="ina-ref">Data de referência</Label>
             <Input

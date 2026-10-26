@@ -524,9 +524,8 @@ export const RelatoriosPage: React.FC = () => {
                 <span className="text-xs text-slate-500 font-normal">Liquidez Corrente</span>
                 <p className="text-2xl lg:text-[26px] font-semibold text-emerald-600 tabular-nums">
                   {liquidezData.corrente !== null
-                    ? liquidezData.corrente.toFixed(2)
+                    ? `${liquidezData.corrente.toFixed(2)}x`
                     : 'Não aplicável'}
-                  x
                 </p>
                 <Badge
                   className={
@@ -547,7 +546,9 @@ export const RelatoriosPage: React.FC = () => {
                   Liquidez Seca (Tradicional)
                 </span>
                 <p className="text-2xl lg:text-[26px] font-semibold text-blue-600 tabular-nums">
-                  {liquidezData.seca !== null ? liquidezData.seca.toFixed(2) : 'Não aplicável'}x
+                  {liquidezData.seca !== null
+                    ? `${liquidezData.seca.toFixed(2)}x`
+                    : 'Não aplicável'}
                 </p>
                 <Badge
                   className={
@@ -567,9 +568,8 @@ export const RelatoriosPage: React.FC = () => {
                 <span className="text-xs text-slate-500 font-normal">Liquidez Imediata</span>
                 <p className="text-2xl lg:text-[26px] font-semibold text-purple-600 tabular-nums">
                   {liquidezData.imediata !== null
-                    ? liquidezData.imediata.toFixed(2)
+                    ? `${liquidezData.imediata.toFixed(2)}x`
                     : 'Não aplicável'}
-                  x
                 </p>
                 <Badge className="bg-purple-50 text-purple-700 border border-purple-200">
                   {liquidezData.imediata >= 0.5 ? 'Disponibilidade Alta' : 'Baixa'}
