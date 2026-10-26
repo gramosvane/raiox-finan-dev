@@ -404,7 +404,7 @@ export const FechamentoCaixaPage: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1.5 w-48">
-                  <Label htmlFor="fc-fita">Valor: total bruto da fita (R$)</Label>
+                  <Label htmlFor="fc-fita">Valor total (R$)</Label>
                   <Input
                     id="fc-fita"
                     inputMode="decimal"
@@ -476,7 +476,7 @@ export const FechamentoCaixaPage: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="fc-cont">Dinheiro contado na gaveta (R$)</Label>
+                  <Label htmlFor="fc-cont">Dinheiro (R$)</Label>
                   <Input
                     id="fc-cont"
                     inputMode="decimal"
