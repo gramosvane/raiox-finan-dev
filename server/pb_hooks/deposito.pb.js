@@ -9,6 +9,9 @@
 // a gravação por txApp não passa pelos hooks de requisição, por isso TODAS as checagens da baixa são repetidas aqui.
 // Correção do valor líquido: rota própria, atômica e auditada (estorna a despesa de taxa e lança a correta; o depósito
 // original nunca muda; cada correção fica em depositos_correcoes). O que NÃO se desfaz é a baixa (regra aprovada).
+// Na correção, o estorno e a taxa nova têm a MESMA data de realização (hoje: no regime de caixa o par fica no mês da
+// correção, sem reescrever meses já vistos) e a MESMA competência do depósito (no regime de competência o mês certo fica certo).
+// A taxa de um depósito não pode ser editada nem estornada à mão (hook deposito_protege_taxa).
 // (o escopo de cada manipulador é isolado no PocketBase: tudo que é auxiliar fica DENTRO de cada um)
 
 routerAdd('POST', '/backend/v1/deposito/registrar', (e) => {
@@ -22,6 +25,11 @@ routerAdd('POST', '/backend/v1/deposito/registrar', (e) => {
   const usr = (m) => new Error('USR:' + m)
   const dataBR = (iso) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4)
   const dia = (v) => String(v || '').slice(0, 10)
+  const dataValida = (iso) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false
+    const d = new Date(iso + 'T00:00:00Z')
+    return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso
+  }
 
   if (!e.auth || e.auth.collection().name !== 'users') {
     return e.json(401, { success: false, message: 'Operação negada: usuário não autenticado.' })
@@ -36,6 +44,9 @@ routerAdd('POST', '/backend/v1/deposito/registrar', (e) => {
     return e.json(403, { success: false, message: 'Operação negada: só o administrador registra depósitos.' })
   }
   const empresaId = usuario.getString('empresa_id') || ''
+  if (!empresaId) {
+    return e.json(400, { success: false, message: 'Seu usuário não tem empresa vinculada. Cadastre a empresa em Configurações.' })
+  }
   const corpo = (e.requestInfo() && e.requestInfo().body) || {}
 
   const chave = String(corpo.chave || '').trim()
@@ -43,8 +54,8 @@ routerAdd('POST', '/backend/v1/deposito/registrar', (e) => {
     return e.json(400, { success: false, message: 'Chave do depósito inválida.' })
   }
   const dataDep = dia(corpo.data_deposito)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataDep)) {
-    return e.json(400, { success: false, message: 'Informe a data em que o dinheiro caiu no banco.' })
+  if (!dataValida(dataDep)) {
+    return e.json(400, { success: false, message: 'Informe uma data válida em que o dinheiro caiu no banco.' })
   }
   const hoje = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10)
   if (dataDep > hoje) {
@@ -111,17 +122,19 @@ routerAdd('POST', '/backend/v1/deposito/registrar', (e) => {
       const originais = []
       let brutoC = 0
       for (const id of ids) {
-        let o
+        let o = null
         try {
           o = txApp.findRecordById('lancamentos', id)
         } catch (_) {
-          throw usr('Um dos títulos marcados não foi encontrado.')
+          o = null
+        }
+        if (!o || (o.getString('empresa_id') || '') !== empresaId) {
+          throw usr('Um dos títulos marcados não foi encontrado nesta empresa. Atualize a lista.')
         }
         const desc = o.getString('descricao')
         if (o.getString('tipo') !== 'receita') throw usr('O título "' + desc + '" não é uma receita.')
         if (o.getString('status') !== 'previsto') throw usr('O título "' + desc + '" não está previsto (já recebido ou estornado).')
         if (o.getString('liquidacao_de') || o.getString('estorno_de')) throw usr('O título "' + desc + '" não pode ser baixado.')
-        if ((o.getString('empresa_id') || '') !== empresaId) throw usr('O título "' + desc + '" pertence a outra empresa.')
         const jaBaixado = txApp.findRecordsByFilter('lancamentos', "liquidacao_de = {:i} && status != 'estornado'", '', 1, 0, { i: id }) || []
         if (jaBaixado.length > 0) throw usr('O título "' + desc + '" já foi baixado.')
         if (dataDep < dia(o.getString('data_lancamento'))) throw usr('O depósito não pode ser anterior à venda do título "' + desc + '".')
@@ -129,6 +142,14 @@ routerAdd('POST', '/backend/v1/deposito/registrar', (e) => {
         if (!(vc > 0)) throw usr('O título "' + desc + '" tem valor inválido.')
         brutoC += vc
         originais.push(o)
+      }
+
+      // 4a) o bruto que o administrador conferiu na tela precisa ser o que o servidor calculou agora
+      if (corpo.bruto_conferido !== undefined && corpo.bruto_conferido !== null) {
+        const bc = Math.round((Number(corpo.bruto_conferido) || 0) * 100)
+        if (bc !== brutoC) {
+          throw usr('O bruto dos títulos mudou desde a sua conferência (tela ' + bc / 100 + ', agora ' + brutoC / 100 + '). Atualize a lista e confira de novo.')
+        }
       }
 
       // 4) taxa = bruto - líquido; nunca presumida: líquido > bruto é erro; taxa alta exige confirmação
@@ -159,6 +180,9 @@ routerAdd('POST', '/backend/v1/deposito/registrar', (e) => {
         }
         if (catTaxa.getString('tipo') !== 'despesa' || !catTaxa.getBool('ativa')) {
           throw usr('A categoria da taxa deve ser uma categoria de despesa ativa.')
+        }
+        if (catTaxa.getString('grupo_dre') !== 'despesa_financeira') {
+          throw usr('A categoria da taxa deve estar no grupo Despesa financeira (orientação do contador).')
         }
       }
 
@@ -272,6 +296,9 @@ routerAdd('POST', '/backend/v1/deposito/corrigir', (e) => {
     return e.json(403, { success: false, message: 'Operação negada: só o administrador corrige depósitos.' })
   }
   const empresaId = usuario.getString('empresa_id') || ''
+  if (!empresaId) {
+    return e.json(400, { success: false, message: 'Seu usuário não tem empresa vinculada. Cadastre a empresa em Configurações.' })
+  }
   const corpo = (e.requestInfo() && e.requestInfo().body) || {}
   const id = String(corpo.id || '').trim()
   const motivo = String(corpo.motivo || '').trim().slice(0, 300)
@@ -330,6 +357,9 @@ routerAdd('POST', '/backend/v1/deposito/corrigir', (e) => {
         } catch (_) {
           throw usr('A despesa de taxa do depósito não foi encontrada.')
         }
+        if (Math.round(o.getFloat('valor') * 100) !== taxaAtualC) {
+          throw usr('A despesa de taxa foi alterada fora do depósito (valor diferente do registrado). Procure o administrador do sistema.')
+        }
         const jaEstornada = txApp.findRecordsByFilter('lancamentos', 'estorno_de = {:i}', '', 1, 0, { i: o.id }) || []
         if (o.getString('status') !== 'realizado' || jaEstornada.length > 0) throw usr('A despesa de taxa vigente já foi estornada.')
         const x = new Record(colLanc)
@@ -367,6 +397,7 @@ routerAdd('POST', '/backend/v1/deposito/corrigir', (e) => {
           throw usr('A categoria da taxa não existe mais. Escolha outra na configuração de depósitos.')
         }
         if (catTaxa.getString('tipo') !== 'despesa' || !catTaxa.getBool('ativa')) throw usr('A categoria da taxa deve ser uma despesa ativa.')
+        if (catTaxa.getString('grupo_dre') !== 'despesa_financeira') throw usr('A categoria da taxa deve estar no grupo Despesa financeira (orientação do contador).')
         const t = new Record(colLanc)
         t.set('tipo', 'despesa')
         t.set('descricao', 'Taxa de maquineta e cartão - depósito de ' + dataDep.slice(8, 10) + '/' + dataDep.slice(5, 7) + '/' + dataDep.slice(0, 4) + ' (' + nomeConta + ') - corrigida')
@@ -376,7 +407,7 @@ routerAdd('POST', '/backend/v1/deposito/corrigir', (e) => {
         t.set('valor', novaTaxaC / 100)
         t.set('competencia', dataDep.slice(0, 7))
         t.set('data_lancamento', dataDep)
-        t.set('data_realizacao', dataDep)
+        t.set('data_realizacao', hoje)
         t.set('status', 'realizado')
         t.set('observacoes', 'Taxa corrigida do depósito ' + dep.id + ' (bruto ' + brutoC / 100 + ' menos o que caiu ' + novoC / 100 + '). Motivo: ' + motivo)
         t.set('usuario_id', usuario.id)

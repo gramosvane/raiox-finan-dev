@@ -70,6 +70,7 @@ def cat(nome, tipo, grupo, ativa=True):
 c_rec = cat("1.1 Mensalidades de planos", "receita", "receita_bruta")
 c_taxa = cat("5.7 Taxas de maquineta e cartao", "despesa", "despesa_financeira")
 c_taxa_inativa = cat("9.9 Taxa inativa", "despesa", "despesa_financeira", ativa=False)
+c_outra_desp = cat("4.1 Despesa operacional", "despesa", "despesas_operacionais")
 for nome_c, tipo_c in [("Cofre", "caixa"), ("Itaú", "banco"), ("Bradesco", "banco")]:
     s_c, r_c = call("POST", "/api/collections/contas/records", {"nome": nome_c, "tipo": tipo_c, "saldo_inicial": 0, "usuario_id": uid}, tok)
     assert s_c == 200, (nome_c, s_c, r_c)
@@ -166,6 +167,10 @@ casos = [
     ("titulo inexistente", lambda: dep(["naoexiste1234567"], [10]), 400),
     ("sem titulos", lambda: dep([], [10]), 400),
     ("chave invalida", lambda: dep([t5], [390], chave="x"), 400),
+    ("data inexistente (31/02)", lambda: dep([t5], [390], data_deposito="2026-02-31"), 400),
+    ("data em formato errado", lambda: dep([t5], [390], data_deposito="31/05/2026"), 400),
+    ("bruto conferido na tela diferente do calculado", lambda: dep([t5], [390], bruto_conferido=399), 400),
+    ("valor da linha em texto", lambda: dep([t5], ["abc"]), 400),
 ]
 for nome, fn, esperado in casos:
     s, r = fn()
@@ -180,8 +185,26 @@ chk("4: categoria da taxa de tipo errado (receita) recusada", s, 400)
 s, _ = call("PATCH", f"/api/collections/permissoes/records/{perm_cat_id}", {"valor": c_taxa_inativa}, tok)
 s, _ = dep([t5], [390])
 chk("4: categoria da taxa inativa recusada", s, 400)
+s, r = call("PATCH", f"/api/collections/permissoes/records/{perm_cat_id}", {"valor": c_outra_desp}, tok)
+s, r = dep([t5], [390])
+chk("4: categoria da taxa fora do grupo Despesa financeira recusada", s, 400)
+chk("4: a mensagem cita o grupo Despesa financeira", "Despesa financeira" in str(r.get("message")), True)
 s, _ = call("PATCH", f"/api/collections/permissoes/records/{perm_cat_id}", {"valor": c_taxa}, tok)
 chk("4: nada gravado com categoria invalida", (n_lanc(), n_dep()), (l3, d3))
+
+# falha injetada na auditoria (gatilho do SQLite): a operacao inteira deve ser desfeita
+con = db()
+con.execute("CREATE TRIGGER falha_teste_auditoria BEFORE INSERT ON auditoria WHEN NEW.acao IN ('deposito_conferido','deposito_corrigido') BEGIN SELECT RAISE(ABORT, 'falha injetada'); END")
+con.commit()
+con.close()
+s, r = dep([t5], [390])
+chk("4: falha na auditoria => registro recusado (nao 200)", s != 200, True)
+chk("4: falha na auditoria => NADA gravado (baixas, taxa, deposito desfeitos)", (n_lanc(), n_dep()), (l3, d3))
+chk("4: falha na auditoria => titulo continua previsto", q1("select status from lancamentos where id=?", t5), "previsto")
+con = db()
+con.execute("DROP TRIGGER falha_teste_auditoria")
+con.commit()
+con.close()
 
 # ---- 5) a taxa nao e presumida: acima do teto exige confirmacao
 s, r = dep([t5], [360])
@@ -196,8 +219,8 @@ chk("5: auditoria registra a taxa alta confirmada", q1("select count(*) from aud
 # ---- 6) taxa zero: liquido igual ao bruto
 t7 = previsto(250, "PIX direto sem taxa")
 nt = q1("select count(*) from lancamentos where categoria_id=?", c_taxa)
-s, r = dep([t7], [250])
-chk("6: liquido = bruto aceito", s, 200)
+s, r = dep([t7], [250], bruto_conferido=250)
+chk("6: liquido = bruto aceito (com o bruto conferido na tela batendo)", s, 200)
 chk("6: taxa zero", r.get("taxa"), 0)
 chk("6: nenhuma despesa de taxa criada", q1("select count(*) from lancamentos where categoria_id=?", c_taxa), nt)
 chk("6: deposito sem taxa nao aponta lancamento", q1("select taxa_lancamento_id from depositos where id=?", r.get("id")), "")
@@ -237,8 +260,9 @@ s, ja = call("POST", "/api/collections/users/auth-with-password", {"identity": "
 atok = ja.get("token")
 if atok and ja["record"].get("empresa_id") == emp2.get("id"):
     s, _ = call("POST", "/api/collections/contas/records", {"nome": "Banco da Outra", "tipo": "banco", "saldo_inicial": 0, "usuario_id": ja["record"]["id"]}, atok)
-    s, _ = dep([p2], [97.5], token=atok, conta="Banco da Outra")
+    s, r = dep([p2], [97.5], token=atok, conta="Banco da Outra")
     chk("9: admin de OUTRA empresa nao baixa titulo alheio", s, 400)
+    chk("9: a recusa NAO vaza a descricao do titulo da outra empresa", "Funeral cartao" in str(r.get("message")), False)
     s, _ = dep([p2], [97.5], token=atok, conta="Itaú")
     chk("9: nem usa a conta de outra empresa", s, 400)
     chk("9: titulo alheio intacto", q1("select status from lancamentos where id=?", p2), "previsto")
@@ -295,6 +319,20 @@ def efeito_taxa():
 
 antes = efeito_taxa()
 l5 = n_lanc()
+
+# a despesa de taxa do deposito nao pode ser editada nem estornada a mao (so "Corrigir" mexe nela)
+taxa_id = rec_dep[6]
+s, _ = call("PATCH", f"/api/collections/lancamentos/records/{taxa_id}", {"descricao": "taxa alterada a mao"}, tok)
+chk("11: editar a taxa pela API recusado", s, [400, 403, 404])
+s, r = call("POST", f"/backend/v1/lancamentos/{taxa_id}/editar", {"motivo": "tentativa de edicao", "valor": 31}, tok)
+chk("11: editar a taxa pela edicao controlada recusado", s, 400)
+chk("11: a taxa continua com o valor e a descricao originais", db().execute("select valor, descricao from lancamentos where id=?", (taxa_id,)).fetchone()[0], 30.0)
+chk("11: descricao da taxa nao mudou", "alterada" in db().execute("select descricao from lancamentos where id=?", (taxa_id,)).fetchone()[0], False)
+s, r = call("POST", "/api/collections/lancamentos/records", {"tipo": "despesa", "descricao": "Estorno manual da taxa", "categoria": "5.7 Taxas de maquineta e cartao", "categoria_id": c_taxa, "valor": 30, "competencia": comp, "data_lancamento": dia, "data_realizacao": dia, "status": "realizado", "conta": "Itaú", "estorno_de": taxa_id, "empresa_id": eid, "usuario_id": uid}, tok)
+chk("11: estorno manual da taxa recusado", s, 400)
+chk("11: a recusa cita o deposito", "taxa de um depósito" in str(r.get("message")), True)
+chk("11: nenhum estorno manual foi gravado", q1("select count(*) from lancamentos where estorno_de=?", taxa_id), 0)
+chk("11: nada novo gravado pelas tentativas", n_lanc(), l5)
 s, _ = call("POST", "/backend/v1/deposito/corrigir", {"id": dep1, "valor_liquido": 1000.5, "motivo": "valor maior que o bruto"}, tok)
 chk("11: correcao acima do bruto recusada", s, 400)
 s, _ = call("POST", "/backend/v1/deposito/corrigir", {"id": dep1, "valor_liquido": 970, "motivo": "igual ao atual"}, tok)
@@ -309,6 +347,19 @@ chk("11: nada gravado nas recusas", n_lanc(), l5)
 s, _ = call("POST", "/backend/v1/deposito/corrigir", {"id": dep1, "valor_liquido": 960, "motivo": "digitei 970 em vez de 960"}, otok)
 chk("11: operador NAO corrige", s, 403)
 chk("11: taxa efetiva antes da correcao = 30", antes, 30)
+# falha injetada na auditoria durante a correcao: nada pode mudar
+n_cor = q1("select count(*) from depositos_correcoes")
+con = db()
+con.execute("CREATE TRIGGER falha_teste_auditoria BEFORE INSERT ON auditoria WHEN NEW.acao IN ('deposito_conferido','deposito_corrigido') BEGIN SELECT RAISE(ABORT, 'falha injetada'); END")
+con.commit()
+con.close()
+s, _ = call("POST", "/backend/v1/deposito/corrigir", {"id": dep1, "valor_liquido": 960, "motivo": "digitei 970 em vez de 960"}, tok)
+chk("11: falha na auditoria => correcao recusada (nao 200)", s != 200, True)
+chk("11: falha na auditoria => nada gravado na correcao", (n_lanc(), q1("select count(*) from depositos_correcoes"), efeito_taxa()), (l5, n_cor, 30))
+con = db()
+con.execute("DROP TRIGGER falha_teste_auditoria")
+con.commit()
+con.close()
 s, r = call("POST", "/backend/v1/deposito/corrigir", {"id": dep1, "valor_liquido": 960, "motivo": "digitei 970 em vez de 960"}, tok)
 chk("11: correcao de 970 para 960 aceita", s, 200)
 chk("11: taxa nova 40 (4%)", (r.get("taxa"), r.get("percentual")), (40, 4))

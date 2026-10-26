@@ -2,39 +2,49 @@
 
 ## O que é
 Em **Contas a Receber → Depósitos da maquineta**, o administrador registra o que o banco pagou:
-1. marca os **títulos** (receitas previstas de PIX e cartão) que compõem o depósito;
+1. marca os **títulos** (receitas previstas de PIX e cartão) que compõem o depósito (até 100);
 2. informa a **data** em que caiu e a **conta bancária**;
-3. digita as **linhas do extrato** (o valor que caiu; pode ser uma por bandeira, ex.: Mastercard débito) e o sistema soma;
-4. confere o resumo: **bruto** dos títulos, **caiu no banco**, **taxa** (bruto menos o que caiu) e o **percentual**.
+3. digita as **linhas do extrato** (o valor que caiu; pode ser uma por bandeira, ex.: Mastercard débito; até 12) e o sistema soma.
+   As linhas servem para você conferir com o extrato do banco; só a **soma** entra na conta. Valores no formato brasileiro (`1.234,56`);
+4. confere o resumo: **bruto** dos títulos, **caiu no banco**, **taxa** (bruto menos o que caiu), o **percentual**, a conta e a data.
 
 Ao confirmar, numa única operação (tudo ou nada): cada título é **baixado pelo valor bruto** na conta escolhida, **uma despesa de taxa**
-é lançada (categoria da taxa, data do depósito) e o **registro imutável do depósito** é gravado com os títulos e as linhas.
-A receita continua **bruta**; a taxa nunca é estimada.
+é lançada (categoria da taxa, competência no mês do depósito) e o **registro imutável do depósito** é gravado com os títulos e as linhas.
+A receita continua **bruta** (base do Simples); a taxa nunca é estimada.
 
 ## O que o sistema recusa (sem gravar nada)
-- o que caiu maior que o bruto; título já baixado, de outra empresa, que não seja receita prevista; depósito anterior à venda ou com data futura;
-- conta que não seja do tipo banco; categoria da taxa ausente, inativa ou que não seja despesa;
+- o que caiu maior que o bruto; título já baixado, de outra empresa, que não seja receita prevista; depósito anterior à venda, com data futura ou inexistente (ex.: 31/02);
+- conta que não seja do tipo banco; categoria da taxa ausente, inativa, que não seja despesa **ou que não esteja no grupo Despesa financeira**;
+- usuário sem empresa vinculada; bruto na tela diferente do bruto que o servidor calcula no momento (a lista mudou: atualize e confira);
 - envio repetido (chave única) e dois depósitos simultâneos com o mesmo título;
-- **taxa acima do limite** (padrão 5%): o sistema **não presume** que toda diferença é taxa; pode faltar ou sobrar título. Só registra com a confirmação explícita.
+- **taxa acima do limite** (padrão 5%): o sistema **não presume** que toda diferença é taxa; pode faltar ou sobrar título. Só registra com a confirmação explícita;
+- título com vencimento **depois** da data do depósito: a tela pede confirmação de que o banco já pagou.
 Só o **administrador** registra e corrige; operador e leitura são recusados no servidor.
+A despesa de taxa de um depósito **não pode ser editada nem estornada à mão**: só a função Corrigir mexe nela.
 
 ## Procedimentos de recuperação (as baixas não se desfazem; o resto se corrige)
-**(a) Digitei o valor que caiu errado.** Botão **Corrigir** na linha do depósito: informe o valor correto e o motivo. O sistema, de forma atômica e
+**(a) Digitei o valor que caiu errado (os títulos estão certos).** Botão **Corrigir** na linha do depósito: informe o valor correto e o motivo. O sistema, de forma atômica e
 auditada, **estorna a despesa de taxa** vigente e **lança a taxa correta**, e grava a correção (valor anterior, novo, taxas, motivo, quem, quando).
 O depósito original **nunca muda**. Valida: maior que zero, não maior que o bruto, diferente do atual, limite de taxa. Pode corrigir mais de uma vez.
+O par estorno + taxa nova fica com **data de realização de hoje** (os meses já vistos não são reescritos) e **competência do mês do depósito**.
 
-**(b) Marquei título a mais ou a menos.** A baixa não se desfaz, mas a **receita bruta não muda**: só muda a data em que o dinheiro aparece. Procedimento:
-1. identifique no **histórico** (composição do depósito) quais títulos foram associados e quais deveriam ter sido;
-2. confira o valor real que caiu pelo extrato e **corrija o valor** do depósito (item a) para que a taxa fique igual à observada;
-3. no depósito seguinte, registre normalmente os títulos que faltaram (a taxa daquele será calculada sobre eles). **Nunca** presuma que a diferença entre dois depósitos é taxa: registre o ajuste com observação clara;
-4. se ficar diferença sem explicação, registre um **lançamento de ajuste** com descrição e peça conferência ao contador.
+**(b) Marquei título a mais ou a menos (a composição está errada).** **Não use Corrigir para isso.** Corrigir só troca o valor que caiu; usá-lo para
+"fazer a taxa ficar boa" falsifica o valor do extrato e estraga a conferência com o banco. A baixa não se desfaz e a função "desfazer depósito"
+**ainda não existe** (é uma lacuna conhecida, prevista para uma etapa seguinte). O que fazer:
+1. **não altere valores** e não repita o registro; anote data, conta, valor que caiu e qual título entrou a mais ou faltou (o histórico mostra a composição);
+2. o **dinheiro na conta está certo** (o que caiu é o que foi registrado); o erro está só em **qual título recebeu a baixa** e em **quanto da diferença virou taxa**;
+3. mesmo assim a diferença altera a receita do mês e a taxa lançada, então **leve ao contador antes de fechar o mês**: ele decide o lançamento de ajuste.
+   Registre em Lançamentos um item de ajuste com descrição clara (depósito, data, conta, título) só depois dessa orientação;
+4. **Nunca** presuma que a diferença entre dois depósitos é taxa.
+Prevenção: confira o resumo antes de confirmar; a tela avisa taxa acima do limite, vencimento futuro e linhas repetidas.
 
-**(c) Escolhi a conta errada.** A baixa não pode ser editada nem estornada. A correção é uma **transferência entre contas** (fora do resultado, duas pontas),
-marcada como **correção de conta** e não como movimento bancário. Essa função entra na etapa de transferências; até lá, registre a observação e não repita o erro:
-a tela mostra a conta escolhida no resumo antes de confirmar.
+**(c) Escolhi a conta errada.** A baixa não pode ser editada nem estornada. A correção correta é uma **transferência entre contas** (fora do resultado,
+duas pontas), marcada como **correção de conta** e não como movimento bancário. Essa função entra na etapa de transferências. Até lá **não faça
+lançamentos de ajuste manuais** (distorcem o resultado): anote data, valor e as duas contas e aguarde a função. Prevenção: a tela mostra a conta escolhida no resumo.
 
 ## Configuração (administrador)
-No mesmo cartão: **categoria da taxa** (despesa financeira, escolhida por id) e **limite da taxa (%)**. A categoria é obrigatória para registrar depósitos com taxa.
+No mesmo cartão: **categoria da taxa** (grupo Despesa financeira, escolhida por id) e **limite da taxa (%)**. A categoria é obrigatória para registrar depósitos com taxa;
+se ainda não existe, o próprio diálogo de registro pede para escolhê-la.
 
 ## Backup
 O backup oficial é a **cópia do banco do servidor** (`backup-usb.sh`); o exportador do aplicativo não inclui depósitos nem fechamentos.

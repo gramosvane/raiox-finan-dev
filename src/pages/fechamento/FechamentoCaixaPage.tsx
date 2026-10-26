@@ -3,6 +3,7 @@ import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { getCategorias } from '@/services/financial'
 import { SeletorContaBaixa } from '@/components/SeletorContaBaixa'
+import { parseValorBR, valorPositivoBR, valorDigitadoInvalido } from '@/lib/numeroBR'
 import type { Categoria } from '@/types/financial'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -91,10 +92,8 @@ const hojeISO = () => {
   return `${d.getFullYear()}-${mm}-${dd}`
 }
 
-const num = (txt: string) => {
-  const n = Number(String(txt).replace(',', '.'))
-  return isFinite(n) && n > 0 ? n : 0
-}
+// Valor digitado no formato brasileiro ("1.234,56", "R$ 120,00"); inválido ou não positivo vira 0 (o envio avisa).
+const num = valorPositivoBR
 
 const dataBR = (iso: string) => {
   const p = String(iso).slice(0, 10).split('-')
@@ -297,6 +296,12 @@ export const FechamentoCaixaPage: React.FC = () => {
     if (!categoriaReceita) return setErro('Escolha a categoria da receita.')
     if (!contaCaixa) return setErro('Escolha a conta do caixa onde o dinheiro fica.')
     if (contado.trim() === '') return setErro('Informe o dinheiro contado na gaveta.')
+    const contadoBR = parseValorBR(contado)
+    if (contadoBR === null || contadoBR < 0) return setErro('Dinheiro contado inválido. Use números como 1.234,56 (ou 0).')
+    if ([fita, pix, credito, debito].some(valorDigitadoInvalido)) {
+      return setErro('Há valor inválido (fita, PIX, crédito ou débito). Use números como 1.234,56.')
+    }
+    if (despesas.some((d) => valorDigitadoInvalido(d.valor))) return setErro('Há valor de despesa inválido. Use números como 1.234,56.')
     if (formasMaiorQueFita) return setErro('PIX, crédito e débito somam mais que o valor da fita.')
     if (despesasMaiorQueDinheiro) return setErro('As despesas do caixa são maiores que o dinheiro recebido.')
     for (const d of despesas) {
