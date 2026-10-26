@@ -3,7 +3,7 @@ import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { getCategorias } from '@/services/financial'
 import { SeletorContaBaixa } from '@/components/SeletorContaBaixa'
-import { parseValorBR, valorPositivoBR, valorDigitadoInvalido } from '@/lib/numeroBR'
+import { parseValorBR, valorPositivoBR, valorDigitadoInvalido, valorDigitadoIlegivel } from '@/lib/numeroBR'
 import type { Categoria } from '@/types/financial'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -92,7 +92,7 @@ const hojeISO = () => {
   return `${d.getFullYear()}-${mm}-${dd}`
 }
 
-// Valor digitado no formato brasileiro ("1.234,56", "R$ 120,00"); inválido ou não positivo vira 0 (o envio avisa).
+// Valor digitado no formato brasileiro ("1.234,56", "R$ 120,00"); inválido ou não positivo vira 0 (o envio e o limite avisam).
 const num = valorPositivoBR
 
 const dataBR = (iso: string) => {
@@ -162,7 +162,7 @@ export const FechamentoCaixaPage: React.FC = () => {
       setLimiteReg(reg)
       const n = reg ? Number(String(reg.valor).replace(',', '.')) : 0
       setLimite(isFinite(n) && n > 0 ? n : null)
-      setLimiteTxt(reg && n > 0 ? String(reg.valor) : '')
+      setLimiteTxt(reg && n > 0 ? n.toFixed(2).replace('.', ',') : '')
 
       const regs: Record<string, PermissaoLinha> = {}
       const novos = { ...PRAZOS_PADRAO }
@@ -187,7 +187,13 @@ export const FechamentoCaixaPage: React.FC = () => {
   }, [])
 
   const salvarLimite = async () => {
-    const n = num(limiteTxt)
+    const textoLimite = limiteTxt.trim()
+    const lido = textoLimite === '' ? 0 : parseValorBR(textoLimite)
+    if (lido === null || lido < 0) {
+      toast({ variant: 'destructive', title: 'Limite inválido', description: 'Use números como 1.234,56, ou deixe em branco para desligar.' })
+      return
+    }
+    const n = lido
     const valor = n > 0 ? String(n) : '0'
     try {
       if (limiteReg) {
@@ -279,11 +285,13 @@ export const FechamentoCaixaPage: React.FC = () => {
     }
   }, [limite, data])
 
-  const totalDespesas = despesas.reduce((s, d) => s + num(d.valor), 0)
-  const formas = num(pix) + num(credito) + num(debito)
-  const dinheiroRecebido = num(fita) - formas
-  const esperado = dinheiroRecebido - totalDespesas
-  const formasMaiorQueFita = formas > num(fita)
+  // tudo em centavos arredondados (como o servidor): 50,10 + 50,20 não pode "passar" de 100,30 por erro de ponto flutuante
+  const r2 = (x: number) => Math.round(x * 100) / 100
+  const totalDespesas = r2(despesas.reduce((s, d) => s + r2(num(d.valor)), 0))
+  const formas = r2(num(pix) + num(credito) + num(debito))
+  const dinheiroRecebido = r2(r2(num(fita)) - formas)
+  const esperado = r2(dinheiroRecebido - totalDespesas)
+  const formasMaiorQueFita = formas > r2(num(fita))
   const despesasMaiorQueDinheiro = totalDespesas > dinheiroRecebido && !formasMaiorQueFita
 
   const fechar = async (e: React.FormEvent) => {
@@ -298,9 +306,14 @@ export const FechamentoCaixaPage: React.FC = () => {
     if (contado.trim() === '') return setErro('Informe o dinheiro contado na gaveta.')
     const contadoBR = parseValorBR(contado)
     if (contadoBR === null || contadoBR < 0) return setErro('Dinheiro contado inválido. Use números como 1.234,56 (ou 0).')
-    if ([fita, pix, credito, debito].some(valorDigitadoInvalido)) {
-      return setErro('Há valor inválido (fita, PIX, crédito ou débito). Use números como 1.234,56.')
-    }
+    const camposTexto: Array<[string, string]> = [
+      ['Valor total', fita],
+      ['PIX', pix],
+      ['Crédito', credito],
+      ['Débito', debito],
+    ]
+    const ruim = camposTexto.find(([, v]) => valorDigitadoIlegivel(v))
+    if (ruim) return setErro(`Valor inválido em "${ruim[0]}". Use números como 1.234,56.`)
     if (despesas.some((d) => valorDigitadoInvalido(d.valor))) return setErro('Há valor de despesa inválido. Use números como 1.234,56.')
     if (formasMaiorQueFita) return setErro('PIX, crédito e débito somam mais que o valor da fita.')
     if (despesasMaiorQueDinheiro) return setErro('As despesas do caixa são maiores que o dinheiro recebido.')
@@ -622,8 +635,8 @@ export const FechamentoCaixaPage: React.FC = () => {
                     <b>{brl(esperado)}</b>
                     <span className="text-slate-500"> = fita − PIX − cartões − despesas do caixa</span>
                     {contado.trim() !== '' && (
-                      <div className={`font-semibold ${corDiferenca(num(contado) - esperado)}`}>
-                        Diferença na gaveta: {brl(num(contado) - esperado)}
+                      <div className={`font-semibold ${corDiferenca(r2(num(contado) - esperado))}`}>
+                        Diferença na gaveta: {brl(r2(num(contado) - esperado))}
                       </div>
                     )}
                   </div>

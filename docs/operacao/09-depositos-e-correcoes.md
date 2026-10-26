@@ -26,25 +26,33 @@ A despesa de taxa de um depósito **não pode ser editada nem estornada à mão*
 **(a) Digitei o valor que caiu errado (os títulos estão certos).** Botão **Corrigir** na linha do depósito: informe o valor correto e o motivo. O sistema, de forma atômica e
 auditada, **estorna a despesa de taxa** vigente e **lança a taxa correta**, e grava a correção (valor anterior, novo, taxas, motivo, quem, quando).
 O depósito original **nunca muda**. Valida: maior que zero, não maior que o bruto, diferente do atual, limite de taxa. Pode corrigir mais de uma vez.
-O par estorno + taxa nova fica com **data de realização de hoje** (os meses já vistos não são reescritos) e **competência do mês do depósito**.
+O par estorno + taxa nova fica com **data de realização de hoje** (no regime de caixa, os meses já vistos não são reescritos) e **competência do mês do depósito**
+(na DRE por competência, o mês do depósito passa a mostrar a taxa corrigida: **se esse mês já foi entregue ao contador, avise-o antes de corrigir**).
+A categoria da taxa nova é a do depósito; se ela foi inativada ou saiu do grupo Despesa financeira depois, vale a categoria configurada hoje em "Configuração da taxa".
 
 **(b) Marquei título a mais ou a menos (a composição está errada).** **Não use Corrigir para isso.** Corrigir só troca o valor que caiu; usá-lo para
 "fazer a taxa ficar boa" falsifica o valor do extrato e estraga a conferência com o banco. A baixa não se desfaz e a função "desfazer depósito"
 **ainda não existe** (é uma lacuna conhecida, prevista para uma etapa seguinte). O que fazer:
-1. **não altere valores** e não repita o registro; anote data, conta, valor que caiu e qual título entrou a mais ou faltou (o histórico mostra a composição);
+1. **não altere valores** e não repita o registro; anote data, conta, valor que caiu e qual título entrou a mais ou faltou (o histórico mostra a composição).
+   **Não baixe nem inclua em outro depósito** o título que ficou de fora (nem o que foi marcado a mais): ele continua aparecendo como previsto ou vencido, mas o
+   dinheiro dele já está no depósito registrado; baixá-lo à parte soma o valor duas vezes no caixa. Deixe-o como está até a orientação do contador;
 2. o **dinheiro na conta está certo** (o que caiu é o que foi registrado); o erro está só em **qual título recebeu a baixa** e em **quanto da diferença virou taxa**;
-3. mesmo assim a diferença altera a receita do mês e a taxa lançada, então **leve ao contador antes de fechar o mês**: ele decide o lançamento de ajuste.
-   Registre em Lançamentos um item de ajuste com descrição clara (depósito, data, conta, título) só depois dessa orientação;
+3. mesmo assim a diferença altera a receita do mês e a taxa lançada, então **leve ao contador antes de fechar o mês**.
+   **Não lance ajuste por conta própria:** todo lançamento realizado exige conta e muda o caixa, que já está certo. Registre só o que o contador definir
+   (tipo, status e conta), com descrição clara (depósito, data, conta, título);
 4. **Nunca** presuma que a diferença entre dois depósitos é taxa.
 Prevenção: confira o resumo antes de confirmar; a tela avisa taxa acima do limite, vencimento futuro e linhas repetidas.
 
 **(c) Escolhi a conta errada.** A baixa não pode ser editada nem estornada. A correção correta é uma **transferência entre contas** (fora do resultado,
 duas pontas), marcada como **correção de conta** e não como movimento bancário. Essa função entra na etapa de transferências. Até lá **não faça
-lançamentos de ajuste manuais** (distorcem o resultado): anote data, valor e as duas contas e aguarde a função. Prevenção: a tela mostra a conta escolhida no resumo.
+lançamentos de ajuste manuais** (distorcem o resultado): anote data, valor e as duas contas e aguarde a função. (Em (b) o contador pode definir o ajuste
+porque o problema é de composição; em (c) a ferramenta correta está a caminho e um ajuste manual a tornaria mais difícil de conciliar.) Prevenção: a tela mostra a conta escolhida no resumo.
 
 ## Configuração (administrador)
 No mesmo cartão: **categoria da taxa** (grupo Despesa financeira, escolhida por id) e **limite da taxa (%)**. A categoria é obrigatória para registrar depósitos com taxa;
-se ainda não existe, o próprio diálogo de registro pede para escolhê-la.
+se ainda não existe, o próprio diálogo de registro pede para escolhê-la (o botão "Salvar categoria" do diálogo grava só a categoria; o limite é mudado na seção de configuração).
+Se a categoria gravada deixar de ser uma despesa ativa do grupo Despesa financeira, ela conta como não configurada e a tela pede uma nova.
+Se a lista de títulos mudou enquanto o diálogo estava aberto (outra pessoa baixou um título), use **Atualizar títulos**: a conta, as linhas do extrato e a observação são mantidas.
 
 ## Backup
 O backup oficial é a **cópia do banco do servidor** (`backup-usb.sh`); o exportador do aplicativo não inclui depósitos nem fechamentos.

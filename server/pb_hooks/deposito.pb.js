@@ -384,20 +384,34 @@ routerAdd('POST', '/backend/v1/deposito/corrigir', (e) => {
       // lança a taxa correta (nada se a nova taxa for zero)
       let novaTaxaLancId = ''
       if (novaTaxaC > 0) {
-        let idCat = dep.getString('categoria_taxa_id')
-        if (!idCat) {
-          try {
-            idCat = txApp.findFirstRecordByData('permissoes', 'chave', 'categoria_taxa_id').getString('valor')
-          } catch (_) {}
-        }
-        let catTaxa
+        // categoria da taxa nova: a do depósito, se ainda servir; senão a configurada hoje (a antiga pode ter sido inativada ou
+        // mudado de grupo depois do registro, e a correção não pode ficar travada por isso)
+        let cfgId = ''
         try {
-          catTaxa = txApp.findRecordById('categorias', idCat)
+          cfgId = txApp.findFirstRecordByData('permissoes', 'chave', 'categoria_taxa_id').getString('valor')
         } catch (_) {
-          throw usr('A categoria da taxa não existe mais. Escolha outra na configuração de depósitos.')
+          cfgId = ''
         }
-        if (catTaxa.getString('tipo') !== 'despesa' || !catTaxa.getBool('ativa')) throw usr('A categoria da taxa deve ser uma despesa ativa.')
-        if (catTaxa.getString('grupo_dre') !== 'despesa_financeira') throw usr('A categoria da taxa deve estar no grupo Despesa financeira (orientação do contador).')
+        const candidatas = []
+        for (const idc of [dep.getString('categoria_taxa_id'), cfgId]) {
+          if (idc && candidatas.indexOf(idc) < 0) candidatas.push(idc)
+        }
+        let catTaxa = null
+        for (const idc of candidatas) {
+          let c = null
+          try {
+            c = txApp.findRecordById('categorias', idc)
+          } catch (_) {
+            c = null
+          }
+          if (c && c.getString('tipo') === 'despesa' && c.getBool('ativa') && c.getString('grupo_dre') === 'despesa_financeira') {
+            catTaxa = c
+            break
+          }
+        }
+        if (!catTaxa) {
+          throw usr('Nenhuma categoria serve para a taxa: a do depósito e a configurada precisam ser despesa ativa do grupo Despesa financeira. Escolha uma em "Configuração da taxa" (Contas a Receber) e tente de novo.')
+        }
         const t = new Record(colLanc)
         t.set('tipo', 'despesa')
         t.set('descricao', 'Taxa de maquineta e cartão - depósito de ' + dataDep.slice(8, 10) + '/' + dataDep.slice(5, 7) + '/' + dataDep.slice(0, 4) + ' (' + nomeConta + ') - corrigida')

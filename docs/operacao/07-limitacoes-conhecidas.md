@@ -8,3 +8,4 @@
 6. **Atualizações** de dependências exigem nova homologação; o lockfile é fixo e não deve ser regerado no servidor.
 7. **`README-INSTALACAO.md`** é histórico (Caddy, NSSM, Windows); não use para instalar. O manual oficial é esta pasta.
 8. **Não use a tag `v0.0.119`**: nela o `preparar-host.sh --endurecer-ssh` recusava a configuração correta por um erro de leitura da configuração efetiva (falhava fechado e restaurava o estado anterior, mas impedia o endurecimento). Corrigido na `v0.0.120`.
+9. **Desfazer depósito da maquineta não existe** (e-Audit, Fase 2): a baixa não se desfaz por regra, então um depósito registrado com título a mais ou a menos só se resolve com orientação do contador (ver `09-depositos-e-correcoes.md`, item b). A conta errada também depende da função de transferência entre contas, ainda não entregue (item c).

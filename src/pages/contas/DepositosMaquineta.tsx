@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { hojeBrasil, formatarDataCivil } from '@/lib/dataCivil'
@@ -94,6 +94,12 @@ const centavos = (v: number) => Math.round((Number(v) || 0) * 100)
 
 const ehMaquineta = (descricao: string) => /pix|cart[aã]o|d[eé]bito|cr[eé]dito|maquineta/i.test(descricao)
 
+// Dia civil de Brasília de um instante gravado pelo PocketBase (UTC, "2026-11-01 01:00:00.000Z"): 22h do dia 31 em Brasília é dia 31.
+const diaBrasilDe = (criado: string) => {
+  const d = new Date(String(criado).replace(' ', 'T'))
+  return Number.isNaN(d.getTime()) ? '' : hojeBrasil(d)
+}
+
 // Chave única do envio (protege contra duplo clique). crypto.randomUUID só existe em página segura (https),
 // por isso usamos getRandomValues, que funciona também em http na rede local.
 const novaChave = () => {
@@ -120,6 +126,8 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
   const [permissoes, setPermissoes] = useState<Record<string, PermissaoLinha>>({})
   const [catTaxaId, setCatTaxaId] = useState('')
   const [catTaxaSalva, setCatTaxaSalva] = useState('')
+  const salvandoCfg = useRef(false)
+  const [salvandoCfgUi, setSalvandoCfgUi] = useState(false)
   const [tetoTxt, setTetoTxt] = useState('5')
   const [tetoSalvo, setTetoSalvo] = useState(5)
 
@@ -163,12 +171,16 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
       setDepositos(deps.items)
       setTotalDepositos(deps.totalItems)
       setCorrecoes(cors)
-      setCategoriasFinanceiras(cats.filter((c) => c.grupo_dre === 'despesa_financeira'))
+      const financeiras = cats.filter((c) => c.grupo_dre === 'despesa_financeira')
+      setCategoriasFinanceiras(financeiras)
       const m: Record<string, PermissaoLinha> = {}
       for (const p of perms) m[p.chave] = p
       setPermissoes(m)
-      setCatTaxaId(m['categoria_taxa_id']?.valor || '')
-      setCatTaxaSalva(m['categoria_taxa_id']?.valor || '')
+      // categoria gravada que não é mais despesa ativa do grupo Despesa financeira conta como "não configurada"
+      const idSalvo = m['categoria_taxa_id']?.valor || ''
+      const idValido = financeiras.some((c) => c.id === idSalvo) ? idSalvo : ''
+      setCatTaxaId(idValido)
+      setCatTaxaSalva(idValido)
       const t = Number(String(m['deposito_taxa_teto']?.valor || '5').replace(',', '.'))
       const tetoOk = isFinite(t) && t > 0 && t <= 100 ? t : 5
       setTetoSalvo(tetoOk)
@@ -191,34 +203,51 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
       : { liquido: d.valor_liquido, taxa: d.taxa, corrigido: false }
   }
 
-  const salvarConfig = async () => {
-    const t = Number(String(tetoTxt).replace(',', '.'))
-    if (!(isFinite(t) && t > 0 && t <= 100)) {
-      toast({ variant: 'destructive', title: 'Limite inválido', description: 'Use um percentual entre 0,1 e 100.' })
-      return
+  // somenteCategoria: o botão do diálogo grava SÓ a categoria (o limite é um campo da seção de configuração, que o diálogo não mostra)
+  const salvarConfig = async (somenteCategoria = false) => {
+    let t = tetoSalvo
+    if (!somenteCategoria) {
+      t = Number(String(tetoTxt).replace(',', '.'))
+      if (!(isFinite(t) && t > 0 && t <= 100)) {
+        toast({ variant: 'destructive', title: 'Limite inválido', description: 'Use um percentual entre 0,1 e 100.' })
+        return
+      }
     }
     if (!catTaxaId) {
       toast({ variant: 'destructive', title: 'Escolha a categoria da taxa', description: 'Sem ela os depósitos com taxa não podem ser registrados.' })
       return
     }
+    if (salvandoCfg.current) return
+    salvandoCfg.current = true
+    setSalvandoCfgUi(true)
     try {
-      const itens: Array<[string, string]> = [
-        ['categoria_taxa_id', catTaxaId],
-        ['deposito_taxa_teto', String(t)],
-      ]
+      const itens: Array<[string, string]> = [['categoria_taxa_id', catTaxaId]]
+      if (!somenteCategoria) itens.push(['deposito_taxa_teto', String(t)])
       for (const [k, valor] of itens) {
         const reg = permissoes[k]
         if (reg) await pb.collection('permissoes').update(reg.id, { valor })
         else await pb.collection('permissoes').create({ chave: k, valor })
       }
-      toast({ title: 'Configuração da taxa salva' })
-      await carregar()
+      toast({ title: somenteCategoria ? 'Categoria da taxa salva' : 'Configuração da taxa salva' })
+      if (somenteCategoria) {
+        // recarrega só as permissões, sem descartar o que foi digitado no campo Limite da seção de configuração
+        const perms = await pb.collection('permissoes').getFullList<PermissaoLinha>()
+        const m: Record<string, PermissaoLinha> = {}
+        for (const p of perms) m[p.chave] = p
+        setPermissoes(m)
+        setCatTaxaSalva(m['categoria_taxa_id']?.valor || '')
+      } else {
+        await carregar()
+      }
     } catch (err: any) {
       toast({
         variant: 'destructive',
         title: 'Não foi possível salvar',
         description: err?.response?.message || err?.message || 'Tente novamente.',
       })
+    } finally {
+      salvandoCfg.current = false
+      setSalvandoCfgUi(false)
     }
   }
 
@@ -235,6 +264,13 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
     setConfirmaFuturos(false)
     setDataDeposito(hojeBrasil())
     setChave(novaChave())
+    const ok = await carregarTitulos()
+    if (!ok) setErro('Não foi possível carregar os títulos em aberto. Feche e abra de novo.')
+  }
+
+  // Recarrega os títulos em aberto SEM mexer em conta, linhas do extrato e observação; tira da seleção os que já não estão
+  // em aberto. Devolve false se falhar (a lista velha não fica na tela como se fosse atual).
+  const carregarTitulos = async (): Promise<boolean> => {
     setCarregandoTitulos(true)
     try {
       const [previstos, baixas] = await Promise.all([
@@ -248,9 +284,18 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
         }),
       ])
       const jaBaixados = new Set(baixas.map((b) => b.liquidacao_de))
-      setAbertos(previstos.filter((p) => !jaBaixados.has(p.id)))
+      const lista = previstos.filter((p) => !jaBaixados.has(p.id))
+      const ids = new Set(lista.map((l) => l.id))
+      setAbertos(lista)
+      setMarcados((prev) => {
+        const resta = Array.from(prev).filter((id) => ids.has(id))
+        return resta.length === prev.size ? prev : new Set(resta)
+      })
+      return true
     } catch {
-      setErro('Não foi possível carregar os títulos em aberto. Feche e abra de novo.')
+      setAbertos([])
+      setMarcados(new Set())
+      return false
     } finally {
       setCarregandoTitulos(false)
     }
@@ -326,7 +371,13 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
     if (linhas.some((l) => valorDigitadoInvalido(l.valor))) return setErro('Há valor inválido nas linhas do extrato. Use números como 1.234,56.')
     if (liquidoC <= 0) return setErro('Informe o valor que caiu (linhas do extrato).')
     if (liquidoMaior) return setErro('O valor que caiu é maior que o bruto dos títulos. Confira a seleção.')
-    if (semCategoria) return setErro('Escolha a categoria da taxa (campo acima, neste diálogo).')
+    if (semCategoria) {
+      return setErro(
+        catTaxaId
+          ? 'Clique em "Salvar categoria" (campo acima, neste diálogo) para gravar a categoria escolhida e depois confirme o depósito.'
+          : 'Escolha a categoria da taxa (campo acima, neste diálogo) e clique em "Salvar categoria".',
+      )
+    }
     if (futuros.length > 0 && !confirmaFuturos) return setErro('Há título com vencimento futuro marcado: confirme abaixo ou desmarque.')
     if (taxaAlta && !confirmaAlta) return setErro('A taxa está acima do limite: confira e confirme abaixo.')
     setEnviando(true)
@@ -351,8 +402,15 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
       await carregar()
       onMudou?.()
     } catch (err: any) {
-      setErro(err?.response?.message || SEM_RESPOSTA)
-      if (!err?.response?.message) await carregar()
+      const msg = err?.response?.message || SEM_RESPOSTA
+      setErro(msg)
+      if (!err?.response?.message) {
+        await carregar()
+      } else {
+        // o servidor recusou (título já baixado, bruto mudou...): atualiza a lista para a seleção refletir o que existe agora
+        const ok = await carregarTitulos()
+        if (!ok) setErro(msg + ' (Não foi possível atualizar a lista de títulos: feche e abra de novo.)')
+      }
     } finally {
       setEnviando(false)
     }
@@ -483,7 +541,7 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
                               {cors.map((c) => (
                                 <li key={c.id}>
                                   {brl(c.liquido_anterior)} para {brl(c.liquido_novo)} em{' '}
-                                  {formatarDataCivil(String(c.created).slice(0, 10))}: {c.motivo}
+                                  {formatarDataCivil(diaBrasilDe(c.created))}: {c.motivo}
                                 </li>
                               ))}
                             </ul>
@@ -546,7 +604,7 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
               </Label>
               <Input id="dep-teto" inputMode="decimal" value={tetoTxt} onChange={(e) => setTetoTxt(e.target.value)} />
             </div>
-            <Button type="button" variant="outline" onClick={salvarConfig}>
+            <Button type="button" variant="outline" disabled={salvandoCfgUi} onClick={() => salvarConfig(false)}>
               Salvar
             </Button>
           </div>
@@ -575,6 +633,11 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
                 <div className="text-xs text-amber-900">
                   Antes de registrar, escolha a categoria da taxa (despesa financeira). É só uma vez.
                 </div>
+                {categoriasFinanceiras.length === 0 && (
+                  <div className="text-xs text-rose-700">
+                    Não há categoria ativa no grupo Despesa financeira. Crie "5.7 Taxas de maquineta e cartão" em Plano de categorias.
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="min-w-[240px]">
                     <Select value={catTaxaId} onValueChange={setCatTaxaId}>
@@ -590,7 +653,7 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="button" size="sm" variant="outline" onClick={salvarConfig}>
+                  <Button type="button" size="sm" variant="outline" disabled={salvandoCfgUi} onClick={() => salvarConfig(true)}>
                     Salvar categoria
                   </Button>
                 </div>
@@ -636,6 +699,18 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
                 </Button>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setMarcados(new Set())}>
                   Limpar
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={carregandoTitulos || enviando}
+                  onClick={async () => {
+                    const ok = await carregarTitulos()
+                    setErro(ok ? '' : 'Não foi possível atualizar a lista de títulos: feche e abra de novo.')
+                  }}
+                >
+                  Atualizar títulos
                 </Button>
               </div>
               <div className="border rounded-xl max-h-64 overflow-y-auto">
