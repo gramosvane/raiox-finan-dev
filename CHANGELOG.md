@@ -5,7 +5,8 @@ Cada versão é uma **tag** no GitHub. A coluna "Situação" diz o que foi realm
 
 | Versão | Situação | O que traz |
 |---|---|---|
-| `v0.2.0-rc.5` | Candidato (testes automatizados 0 falhas; aguardando teste do Owner com fita real) | Fechamento de caixa gera os lançamentos por caixa e fita; estorno de fechamento só do administrador; categorias inativas recusadas. Inclui rc.3 e rc.4. Migrações 0023 e 0024 (aditivas). |
+| `v0.2.0-rc.6` | Candidato (testes automatizados 0 falhas) | Textos do fechamento (Valor total, Dinheiro); página sempre atualizada após uma atualização (`Cache-Control: no-cache`). Inclui rc.5. |
+| `v0.2.0-rc.5` | Instalada no servidor do Owner; fechamento testado por ele na tela (aprovou o resultado) | Fechamento de caixa gera os lançamentos por caixa e fita; estorno de fechamento só do administrador; categorias inativas recusadas. Inclui rc.3 e rc.4. Migrações 0023 e 0024 (aditivas). |
 | `v0.2.0-rc.4` | Substituída pela rc.5 (nunca instalada) | Fechamento de caixa que gera lançamentos (dinheiro, PIX, débito, crédito e despesas do caixa). |
 | `v0.2.0-rc.3` | Substituída (nunca instalada) | Total da fita no fechamento; o primeiro acesso passa a pedir o nome da empresa. |
 | `v0.2.0-rc.2` | **Aprovada e instalada** no servidor do Owner (atualização rc.1 → rc.2 provada) | Nome e-Audit no login, primeiro acesso, cabeçalho e aba; campo "Usuário" no login. |
