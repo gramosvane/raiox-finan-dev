@@ -1,7 +1,10 @@
 #!/bin/bash
 # e-audit: instalador de UM comando (Ubuntu Server 24.04).
 #
-#   curl -fsSL https://raw.githubusercontent.com/gramosvane/raiox-finan-dev/VERSAO/install.sh | sudo bash -s -- VERSAO
+#   curl -fsSL https://raw.githubusercontent.com/gramosvane/raiox-finan-dev/VERSAO/install.sh | sudo bash -s -- VERSAO [COMMIT]
+#
+# VERSAO é a tag (ex.: v0.2.0 ou v0.2.0-rc.1). COMMIT (opcional) é o início do hash do commit esperado: se o
+# código baixado for outro, a instalação PARA antes de mudar qualquer coisa importante.
 #
 # O que faz, nesta ordem, parando se algo falhar:
 #   1. instala o que faltar (pacotes, Node 24, usuário do sistema);
@@ -14,6 +17,8 @@ set -euo pipefail
 
 REPO="https://github.com/gramosvane/raiox-finan-dev"
 TAG="${1:-${EAUDIT_VERSAO:-}}"
+COMMIT_ESPERADO="${2:-}"
+ETAPA="início"
 USUARIO="raiox"
 APP="/opt/raiox/app"
 PORTA="8090"
@@ -25,7 +30,8 @@ falha() { echo "[ERRO]  $*" >&2; echo "[ERRO]  Instalação INTERROMPIDA. Nada f
 
 [ "$(id -u)" -eq 0 ] || falha "Execute com sudo."
 [ -n "$TAG" ] || falha "Informe a versão: ... | sudo bash -s -- v0.2.0"
-echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$' || falha "Versão inválida: $TAG (esperado algo como v0.2.0)."
+echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$' || falha "Versão inválida: $TAG (esperado algo como v0.2.0 ou v0.2.0-rc.1)."
+[ -z "$COMMIT_ESPERADO" ] || echo "$COMMIT_ESPERADO" | grep -qE '^[0-9a-f]{7,40}$' || falha "Commit esperado inválido: $COMMIT_ESPERADO."
 . /etc/os-release
 [ "${ID:-}" = "ubuntu" ] && [ "${VERSION_ID:-}" = "24.04" ] || falha "Esperado Ubuntu 24.04 (obtido: ${PRETTY_NAME:-desconhecido})."
 echo "== e-audit: instalação da versão $TAG =="
@@ -36,6 +42,7 @@ if [ -e "$APP" ]; then
 fi
 
 # ---------- 1. pacotes e Node ----------
+ETAPA="1 de 5: pacotes e Node"
 export DEBIAN_FRONTEND=noninteractive
 info "Instalando pacotes necessários (pode demorar alguns minutos)..."
 apt-get update -y >/dev/null
@@ -58,6 +65,7 @@ else
 fi
 
 # ---------- 2. rede e firewall ----------
+ETAPA="2 de 5: rede e firewall"
 DEV="$(ip -4 -o route show default | awk '{print $5; exit}')"
 [ -n "$DEV" ] || falha "Não achei a placa de rede padrão."
 CIDR="$(ip -4 -o addr show dev "$DEV" scope global | awk '{print $4; exit}')"
@@ -65,6 +73,8 @@ CIDR="$(ip -4 -o addr show dev "$DEV" scope global | awk '{print $4; exit}')"
 IP="${CIDR%/*}"
 REDE="$(python3 -c 'import ipaddress,sys; print(ipaddress.ip_network(sys.argv[1], strict=False))' "$CIDR")"
 ok "Rede local detectada: $REDE (este servidor: $IP, placa $DEV)"
+info "Confira: o e-audit ficará liberado SÓ para a rede $REDE. Se estiver errado, aperte Ctrl+C agora (aguardando 10 s)."
+sleep 10
 ufw default deny incoming >/dev/null
 ufw default allow outgoing >/dev/null
 ufw allow from "$REDE" to any port 22 proto tcp >/dev/null
@@ -80,12 +90,16 @@ ufw --force enable >/dev/null
 ok "Firewall ligado: SSH e e-audit liberados só para $REDE"
 
 # ---------- 3. baixar o aplicativo direto do GitHub ----------
+ETAPA="3 de 5: baixar o aplicativo"
 CLONOU=0
 saida() {
     local rc=$?
     if [ "$rc" -ne 0 ] && [ "$CLONOU" = 1 ] && [ -e "$APP" ]; then
         echo "" >&2
-        echo "[ERRO]  A instalação não terminou. Nada foi apagado. Para tentar de novo, guarde a tentativa com:" >&2
+        echo "[ERRO]  A instalação parou na etapa $ETAPA." >&2
+        if systemctl is-active --quiet raiox 2>/dev/null; then echo "        O serviço e-audit (raiox) está LIGADO." >&2; else echo "        O serviço e-audit (raiox) NÃO está ligado." >&2; fi
+        echo "        Já instalado nesta tentativa: pacotes, Node, usuário e firewall; o código em $APP." >&2
+        echo "[ERRO]  Nada foi apagado. Para tentar de novo, guarde a tentativa com:" >&2
         echo "          sudo mv $APP $APP.tentativa-\$(date +%Y%m%d-%H%M%S)" >&2
         echo "        e rode o comando de instalação outra vez." >&2
     fi
@@ -96,9 +110,19 @@ info "Baixando o e-audit $TAG do GitHub..."
 sudo -u "$USUARIO" -H git clone --quiet --branch "$TAG" --depth 1 "$REPO" "$APP" 2>/dev/null \
     || falha "Não consegui baixar a versão $TAG de $REPO (a versão existe? há internet?)."
 CLONOU=1
-ok "Código baixado ($(git -c safe.directory="$APP" -C "$APP" rev-parse --short HEAD))"
+COMMIT_BAIXADO="$(git -c safe.directory="$APP" -C "$APP" rev-parse HEAD)"
+ok "Código baixado: versão $TAG, commit ${COMMIT_BAIXADO:0:12}"
+if [ -n "$COMMIT_ESPERADO" ]; then
+    case "$COMMIT_BAIXADO" in
+        "$COMMIT_ESPERADO"*) ok "Commit confere com o esperado ($COMMIT_ESPERADO)" ;;
+        *) falha "O código baixado (${COMMIT_BAIXADO:0:12}) NÃO é o commit esperado ($COMMIT_ESPERADO). Não vou instalar." ;;
+    esac
+else
+    info "Nenhum commit esperado foi informado; a versão instalada é $TAG (${COMMIT_BAIXADO:0:12})."
+fi
 
 # ---------- 4. segredos, instalação e serviço ----------
+ETAPA="4 de 5: instalação e serviço"
 gerar() { python3 -c 'import secrets,sys; a=sys.argv[1]; n=int(sys.argv[2]); print("".join(secrets.choice(a) for _ in range(n)))' "$1" "$2"; }
 CODIGO_BRUTO="$(gerar 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' 12)"
 CODIGO="${CODIGO_BRUTO:0:4}-${CODIGO_BRUTO:4:4}-${CODIGO_BRUTO:8:4}"
@@ -110,10 +134,11 @@ chmod 600 "$SEGREDOS/superusuario.txt"
 ok "Credenciais do superusuário técnico guardadas em $SEGREDOS/superusuario.txt (só o administrador do servidor lê)"
 
 info "Compilando e instalando (alguns minutos)..."
-RAIOX_ESCUTA_IP=0.0.0.0 RAIOX_CODIGO_ATIVACAO="$CODIGO_BRUTO" RAIOX_SUPERUSER_EMAIL="$SU_EMAIL" RAIOX_SUPERUSER_SENHA="$SU_SENHA" \
+RAIOX_TAG_ESPERADA="$TAG" RAIOX_ESCUTA_IP=0.0.0.0 RAIOX_CODIGO_ATIVACAO="$CODIGO_BRUTO" RAIOX_SUPERUSER_EMAIL="$SU_EMAIL" RAIOX_SUPERUSER_SENHA="$SU_SENHA" \
     bash "$APP/deploy/instalar-producao.sh" --ativar
 
 # ---------- 5. limites de tentativas ----------
+ETAPA="5 de 5: limites de tentativas"
 LIMITES_OK=0
 TOKEN="$(python3 - "$SU_EMAIL" "$SU_SENHA" "$PORTA" <<'PY' 2>/dev/null || true
 import json, sys, urllib.request
@@ -147,7 +172,8 @@ if [ "$LIMITES_OK" = 1 ]; then ok "Limites de tentativas ativados"; else info "A
 cat <<FIM
 
 ============================================================
-  e-audit instalado e funcionando.
+  e-audit $TAG instalado e funcionando.
+  Commit: ${COMMIT_BAIXADO:0:12}
 
   1. No computador, abra o navegador em:   http://$IP:$PORTA/
      (crie um atalho para esse endereço na área de trabalho)

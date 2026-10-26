@@ -40,3 +40,17 @@ Nada é apagado. O próprio instalador mostra o comando para guardar a tentativa
 ## Atualizar e recuperar
 
 Veja `04-atualizacao-e-retorno.md` e `03-backup-e-copia-externa.md`.
+
+## Superusuário técnico: ciclo de vida
+
+- **O que é:** a conta de administração do motor do banco (PocketBase). O usuário final nunca precisa dela.
+- **Onde fica a senha:** `/etc/e-audit/superusuario.txt`, legível só pelo administrador do servidor (root).
+  Não vai para backup, log nem tela.
+- **Quem alcança:** o painel (`/_/`) e o login de superusuário respondem **só a pedidos feitos de dentro do
+  próprio servidor** (por túnel SSH) e recusam (403) qualquer pedido pela rede local ou por proxy.
+- **Recuperar:** `sudo cat /etc/e-audit/superusuario.txt`.
+- **Trocar a senha:**
+  `sudo -u raiox /opt/raiox/app/pocketbase superuser upsert tecnico@e-audit.local NOVA_SENHA --dir=/opt/raiox/app/pb_data`
+  e atualize o arquivo acima. Não precisa de e-mail.
+- **Cadastro de usuários:** só pelo primeiro acesso (com o código de ativação) e, depois, pelo administrador
+  na tela Usuários. O cadastro anônimo é recusado.
