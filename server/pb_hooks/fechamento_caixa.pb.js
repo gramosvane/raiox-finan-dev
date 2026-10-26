@@ -2,9 +2,12 @@
 // - O usuário e a empresa vêm do servidor; o cliente não define total do sistema, esperado nem diferença.
 // - total_sistema = soma das RECEITAS com status 'realizado' e data_realizacao no dia (da empresa do
 //   usuário, quando houver).
-// - esperado_dinheiro = total_sistema - (maquineta_pix + maquineta_credito + maquineta_debito)
-//                       - despesas_dinheiro
-// - diferenca = dinheiro_contado - esperado_dinheiro (negativo = falta; positivo = sobra).
+// MODO FITA (informado total_fita = soma BRUTA dos recebimentos do dia, impressa pelo caixa):
+//   esperado_dinheiro = total_fita - (pix + crédito + débito) - despesas_dinheiro   (despesas pagas do caixa)
+//   diferenca = dinheiro_contado - esperado_dinheiro (negativo = falta; positivo = sobra)
+//   diferenca_lancamentos = total_fita - total_sistema (diferente de zero = falta ou sobra lançamento de receita)
+// MODO ANTIGO (sem total_fita, clientes antigos): esperado_dinheiro = total_sistema - (pix + crédito + débito)
+//   - despesas_dinheiro; diferenca_lancamentos = 0.
 // - A auditoria é gravada na mesma transação (aberta no manipulador de requisição); se falhar, o fechamento não é gravado.
 // Não presume separação por forma de pagamento que a origem não entrega: PIX, crédito e débito
 // vêm do relatório da maquineta informado pelo operador.
@@ -34,6 +37,19 @@ onRecordCreateRequest((e) => {
     rec.set(c, v[c])
   }
 
+  const corpo = (e.requestInfo() && e.requestInfo().body) || {}
+  const fitaBruta = corpo.total_fita
+  const temFita = fitaBruta !== undefined && fitaBruta !== null && String(fitaBruta).trim() !== ''
+  let fita = 0
+  if (temFita) {
+    const nf = Number(String(fitaBruta).replace(',', '.'))
+    if (!isFinite(nf) || nf < 0) {
+      throw new BadRequestError('O total da fita deve ser um número maior ou igual a zero.')
+    }
+    fita = arredonda2(nf)
+  }
+  rec.set('total_fita', fita)
+
   const empresaId = e.auth.getString('empresa_id')
   let total = 0
   try {
@@ -51,9 +67,11 @@ onRecordCreateRequest((e) => {
     throw new BadRequestError('Não foi possível calcular o total do sistema para a data.')
   }
 
+  const base = temFita ? fita : total
   const esperado = arredonda2(
-    total - (v.maquineta_pix + v.maquineta_credito + v.maquineta_debito) - v.despesas_dinheiro,
+    base - (v.maquineta_pix + v.maquineta_credito + v.maquineta_debito) - v.despesas_dinheiro,
   )
+  rec.set('diferenca_lancamentos', temFita ? arredonda2(fita - total) : 0)
   rec.set('total_sistema', total)
   rec.set('esperado_dinheiro', esperado)
   rec.set('diferenca', arredonda2(v.dinheiro_contado - esperado))
@@ -86,6 +104,8 @@ onRecordCreate((e) => {
   audit.set('referencia_id', e.record.id)
   audit.set('detalhes', {
     data: String(e.record.get('data')).slice(0, 10),
+    total_fita: e.record.getFloat('total_fita'),
+    diferenca_lancamentos: e.record.getFloat('diferenca_lancamentos'),
     total_sistema: e.record.getFloat('total_sistema'),
     maquineta_pix: e.record.getFloat('maquineta_pix'),
     maquineta_credito: e.record.getFloat('maquineta_credito'),

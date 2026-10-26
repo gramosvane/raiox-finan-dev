@@ -19,6 +19,8 @@ import { AlertCircle, Loader2 } from 'lucide-react'
 interface Fechamento {
   id: string
   data: string
+  total_fita?: number
+  diferenca_lancamentos?: number
   total_sistema: number
   maquineta_pix: number
   maquineta_credito: number
@@ -74,6 +76,7 @@ export const FechamentoCaixaPage: React.FC = () => {
   const [resultado, setResultado] = useState<Fechamento | null>(null)
 
   const [data, setData] = useState(hojeISO())
+  const [fita, setFita] = useState('')
   const [pix, setPix] = useState('')
   const [credito, setCredito] = useState('')
   const [debito, setDebito] = useState('')
@@ -168,12 +171,14 @@ export const FechamentoCaixaPage: React.FC = () => {
     e.preventDefault()
     setErro('')
     if (!data) return setErro('Informe a data do fechamento.')
+    if (fita.trim() === '') return setErro('Informe o total da fita do caixa.')
     if (contado.trim() === '') return setErro('Informe o dinheiro contado.')
 
     setSalvando(true)
     try {
       const criado = await pb.collection('fechamentos_caixa').create<Fechamento>({
         data,
+        total_fita: num(fita),
         maquineta_pix: num(pix),
         maquineta_credito: num(credito),
         maquineta_debito: num(debito),
@@ -191,6 +196,9 @@ export const FechamentoCaixaPage: React.FC = () => {
     }
   }
 
+  const esperadoPrevia = num(fita) - num(pix) - num(credito) - num(debito) - num(despesas)
+  const formasMaiorQueFita = num(pix) + num(credito) + num(debito) + num(despesas) > num(fita)
+
   const corDiferenca = (v: number) =>
     Math.abs(v) < 0.005 ? 'text-emerald-600' : v < 0 ? 'text-rose-600' : 'text-amber-600'
 
@@ -199,8 +207,8 @@ export const FechamentoCaixaPage: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Fechamento de caixa</h1>
         <p className="text-sm text-slate-500">
-          Conferência do dia: o sistema soma as receitas realizadas e compara com o relatório da
-          maquineta, as despesas pagas em dinheiro e o dinheiro contado.
+          Conferência do dia em duas partes: (1) o dinheiro contado fecha com a fita menos PIX, cartões
+          e despesas pagas do caixa; (2) a fita fecha com as receitas lançadas no sistema.
         </p>
       </div>
 
@@ -230,7 +238,17 @@ export const FechamentoCaixaPage: React.FC = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="fc-pix">Maquineta: PIX (R$)</Label>
+                <Label htmlFor="fc-fita">Total da fita do caixa (R$)</Label>
+                <Input
+                  id="fc-fita"
+                  inputMode="decimal"
+                  value={fita}
+                  onChange={(e) => setFita(e.target.value)}
+                />
+                <p className="text-xs text-slate-500">Total bruto recebido no dia, como saiu na fita.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="fc-pix">PIX (R$)</Label>
                 <Input
                   id="fc-pix"
                   inputMode="decimal"
@@ -239,7 +257,7 @@ export const FechamentoCaixaPage: React.FC = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="fc-cred">Maquineta: crédito (R$)</Label>
+                <Label htmlFor="fc-cred">Cartão de crédito (R$)</Label>
                 <Input
                   id="fc-cred"
                   inputMode="decimal"
@@ -248,7 +266,7 @@ export const FechamentoCaixaPage: React.FC = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="fc-deb">Maquineta: débito (R$)</Label>
+                <Label htmlFor="fc-deb">Cartão de débito (R$)</Label>
                 <Input
                   id="fc-deb"
                   inputMode="decimal"
@@ -257,16 +275,19 @@ export const FechamentoCaixaPage: React.FC = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="fc-desp">Despesas pagas em dinheiro (R$)</Label>
+                <Label htmlFor="fc-desp">Despesas pagas do caixa (R$)</Label>
                 <Input
                   id="fc-desp"
                   inputMode="decimal"
                   value={despesas}
                   onChange={(e) => setDespesas(e.target.value)}
                 />
+                <p className="text-xs text-slate-500">
+                  Só o que saiu do dinheiro do caixa. Lance também em Lançamentos para entrar na DRE.
+                </p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="fc-cont">Dinheiro contado (R$)</Label>
+                <Label htmlFor="fc-cont">Dinheiro contado na gaveta (R$)</Label>
                 <Input
                   id="fc-cont"
                   inputMode="decimal"
@@ -274,6 +295,19 @@ export const FechamentoCaixaPage: React.FC = () => {
                   onChange={(e) => setContado(e.target.value)}
                 />
               </div>
+              {fita.trim() !== '' && (
+                <div className="md:col-span-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+                  <div className="text-slate-500">
+                    Dinheiro esperado na gaveta = fita − PIX − crédito − débito − despesas do caixa
+                  </div>
+                  <div className="text-lg font-semibold">{brl(esperadoPrevia)}</div>
+                  {formasMaiorQueFita && (
+                    <div className="text-xs text-amber-700 mt-1">
+                      Atenção: PIX, cartões e despesas somam mais que a fita. Confira os valores.
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="space-y-1.5 md:col-span-3">
                 <Label htmlFor="fc-obs">Observação (opcional)</Label>
                 <Input
@@ -358,25 +392,58 @@ export const FechamentoCaixaPage: React.FC = () => {
           <CardHeader>
             <CardTitle className="text-lg">Resultado de {dataBR(resultado.data)}</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-4 text-sm">
+          <CardContent className="space-y-5 text-sm">
             <div>
-              <div className="text-slate-500">Total do sistema (receitas realizadas)</div>
-              <div className="text-lg font-semibold">{brl(resultado.total_sistema)}</div>
-            </div>
-            <div>
-              <div className="text-slate-500">Dinheiro esperado</div>
-              <div className="text-lg font-semibold">{brl(resultado.esperado_dinheiro)}</div>
-            </div>
-            <div>
-              <div className="text-slate-500">Dinheiro contado</div>
-              <div className="text-lg font-semibold">{brl(resultado.dinheiro_contado)}</div>
-            </div>
-            <div>
-              <div className="text-slate-500">Diferença</div>
-              <div className={`text-lg font-semibold ${corDiferenca(resultado.diferenca)}`}>
-                {brl(resultado.diferenca)}
+              <div className="font-semibold text-slate-800 mb-2">1. Conferência do caixa</div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <div className="text-slate-500">Dinheiro esperado na gaveta</div>
+                  <div className="text-lg font-semibold">{brl(resultado.esperado_dinheiro)}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Dinheiro contado</div>
+                  <div className="text-lg font-semibold">{brl(resultado.dinheiro_contado)}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Diferença do caixa</div>
+                  <div className={`text-lg font-semibold ${corDiferenca(resultado.diferenca)}`}>
+                    {brl(resultado.diferenca)}
+                  </div>
+                </div>
               </div>
             </div>
+            {(resultado.total_fita ?? 0) > 0 || (resultado.diferenca_lancamentos ?? 0) !== 0 ? (
+              <div>
+                <div className="font-semibold text-slate-800 mb-2">
+                  2. Conferência com os lançamentos
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <div className="text-slate-500">Total da fita</div>
+                    <div className="text-lg font-semibold">{brl(resultado.total_fita ?? 0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500">Receitas lançadas e realizadas no dia</div>
+                    <div className="text-lg font-semibold">{brl(resultado.total_sistema)}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500">Diferença dos lançamentos</div>
+                    <div
+                      className={`text-lg font-semibold ${corDiferenca(-(resultado.diferenca_lancamentos ?? 0))}`}
+                    >
+                      {brl(resultado.diferenca_lancamentos ?? 0)}
+                    </div>
+                  </div>
+                </div>
+                {Math.abs(resultado.diferenca_lancamentos ?? 0) >= 0.005 && (
+                  <p className="text-xs text-amber-700 mt-2">
+                    {(resultado.diferenca_lancamentos ?? 0) > 0
+                      ? 'A fita é maior que as receitas lançadas: falta lançar receita deste dia.'
+                      : 'As receitas lançadas são maiores que a fita: há lançamento a mais ou de outro dia.'}
+                  </p>
+                )}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       )}
@@ -397,17 +464,20 @@ export const FechamentoCaixaPage: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Data</TableHead>
-                  <TableHead>Sistema</TableHead>
-                  <TableHead>Maquineta</TableHead>
+                  <TableHead>Fita</TableHead>
+                  <TableHead>Lançado</TableHead>
+                  <TableHead>PIX e cartões</TableHead>
                   <TableHead>Esperado</TableHead>
                   <TableHead>Contado</TableHead>
-                  <TableHead>Diferença</TableHead>
+                  <TableHead>Dif. caixa</TableHead>
+                  <TableHead>Dif. lançamentos</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {lista.map((f) => (
                   <TableRow key={f.id}>
                     <TableCell>{dataBR(f.data)}</TableCell>
+                    <TableCell>{(f.total_fita ?? 0) > 0 ? brl(f.total_fita ?? 0) : '—'}</TableCell>
                     <TableCell>{brl(f.total_sistema)}</TableCell>
                     <TableCell>
                       {brl(f.maquineta_pix + f.maquineta_credito + f.maquineta_debito)}
@@ -415,6 +485,9 @@ export const FechamentoCaixaPage: React.FC = () => {
                     <TableCell>{brl(f.esperado_dinheiro)}</TableCell>
                     <TableCell>{brl(f.dinheiro_contado)}</TableCell>
                     <TableCell className={corDiferenca(f.diferenca)}>{brl(f.diferenca)}</TableCell>
+                    <TableCell className={corDiferenca(-(f.diferenca_lancamentos ?? 0))}>
+                      {(f.total_fita ?? 0) > 0 ? brl(f.diferenca_lancamentos ?? 0) : '—'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
