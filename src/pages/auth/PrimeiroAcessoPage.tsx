@@ -15,7 +15,7 @@ import {
 import { DollarSign, Loader2, ShieldCheck, AlertCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { registrarAtividade, emitirLoginMultiAbas } from '@/lib/sessaoInatividade'
-import { setMasterPasswordServer } from '@/services/financial'
+import { setMasterPasswordServer, createEmpresa } from '@/services/financial'
 
 type Etapa = 'verificando' | 'administrador' | 'senhaMestra' | 'erro'
 
@@ -27,6 +27,7 @@ export const PrimeiroAcessoPage: React.FC = () => {
   const [erro, setErro] = useState('')
 
   const [nome, setNome] = useState('')
+  const [empresa, setEmpresa] = useState('')
   const [usuario, setUsuario] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -65,6 +66,7 @@ export const PrimeiroAcessoPage: React.FC = () => {
     e.preventDefault()
     setErro('')
     if (!nome.trim()) return setErro('O nome é obrigatório.')
+    if (empresa.trim().length < 2) return setErro('Informe o nome da empresa.')
     if (!/^[a-z0-9._-]{3,40}$/.test(usuario.trim().toLowerCase()))
       return setErro(
         'O usuário deve ter de 3 a 40 caracteres: letras, números, ponto, hífen ou sublinhado.',
@@ -88,6 +90,16 @@ export const PrimeiroAcessoPage: React.FC = () => {
         },
       })
       await pb.collection('users').authWithPassword(email.trim(), senha)
+      try {
+        await createEmpresa({ nome: empresa.trim(), padrao: true })
+        await pb.collection('users').authRefresh()
+      } catch {
+        toast({
+          variant: 'destructive',
+          title: 'Empresa não cadastrada',
+          description: 'O administrador foi criado. Cadastre a empresa em Configurações antes de lançar.',
+        })
+      }
       const agora = Date.now()
       registrarAtividade(agora)
       emitirLoginMultiAbas(agora)
@@ -190,8 +202,19 @@ export const PrimeiroAcessoPage: React.FC = () => {
                   </div>
                 )}
                 <div className="space-y-1.5">
+                  <Label htmlFor="pa-empresa" className="text-xs text-slate-700 font-semibold">
+                    Nome da empresa
+                  </Label>
+                  <Input
+                    id="pa-empresa"
+                    value={empresa}
+                    autoComplete="organization"
+                    onChange={(e) => setEmpresa(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
                   <Label htmlFor="pa-nome" className="text-xs text-slate-700 font-semibold">
-                    Nome completo
+                    Seu nome completo
                   </Label>
                   <Input id="pa-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
                 </div>
