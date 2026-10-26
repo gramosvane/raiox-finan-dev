@@ -29,6 +29,7 @@ import { FechamentoCaixaPage } from '@/pages/fechamento/FechamentoCaixaPage'
 import { OrcamentoPage } from '@/pages/orcamento/OrcamentoPage'
 import { ReceitaPage } from '@/pages/receita/ReceitaPage'
 import { CustosPage } from '@/pages/custos/CustosPage'
+import { InadimplenciaPage } from '@/pages/inadimplencia/InadimplenciaPage'
 import { IndicadoresPage } from '@/pages/indicadores/IndicadoresPage'
 import { PlanoCategoriasPage } from '@/pages/plano/PlanoCategoriasPage'
 import { DepreciacaoPage } from '@/pages/depreciacao/DepreciacaoPage'
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/orcamento" element={<OrcamentoPage />} />
               <Route path="/receita" element={<ReceitaPage />} />
               <Route path="/custos" element={<CustosPage />} />
+              <Route path="/inadimplencia" element={<InadimplenciaPage />} />
               <Route path="/indicadores" element={<IndicadoresPage />} />
               <Route path="/plano-categorias" element={<PlanoCategoriasPage />} />
               <Route path="/depreciacao" element={<DepreciacaoPage />} />

@@ -33,6 +33,7 @@ import {
   Repeat,
   BarChart3,
   PieChart,
+  AlertTriangle,
   Menu,
   X,
   Bell,
@@ -162,6 +163,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       color: 'text-rose-600',
       activeBg: 'bg-rose-50 text-rose-700',
       hoverBg: 'hover:bg-rose-50/70',
+    },
+    {
+      title: 'Inadimplência',
+      path: '/inadimplencia',
+      icon: AlertTriangle,
+      color: 'text-amber-600',
+      activeBg: 'bg-amber-50 text-amber-700',
+      hoverBg: 'hover:bg-amber-50/70',
     },
     {
       title: 'Indicadores',
