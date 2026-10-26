@@ -80,10 +80,22 @@ ufw --force enable >/dev/null
 ok "Firewall ligado: SSH e e-audit liberados só para $REDE"
 
 # ---------- 3. baixar o aplicativo direto do GitHub ----------
+CLONOU=0
+saida() {
+    local rc=$?
+    if [ "$rc" -ne 0 ] && [ "$CLONOU" = 1 ] && [ -e "$APP" ]; then
+        echo "" >&2
+        echo "[ERRO]  A instalação não terminou. Nada foi apagado. Para tentar de novo, guarde a tentativa com:" >&2
+        echo "          sudo mv $APP $APP.tentativa-\$(date +%Y%m%d-%H%M%S)" >&2
+        echo "        e rode o comando de instalação outra vez." >&2
+    fi
+}
+trap saida EXIT
 info "Baixando o e-audit $TAG do GitHub..."
 [ -d /opt/raiox ] || falha "/opt/raiox não existe (o usuário $USUARIO deveria tê-la criado)."
 sudo -u "$USUARIO" -H git clone --quiet --branch "$TAG" --depth 1 "$REPO" "$APP" 2>/dev/null \
     || falha "Não consegui baixar a versão $TAG de $REPO (a versão existe? há internet?)."
+CLONOU=1
 ok "Código baixado ($(git -c safe.directory="$APP" -C "$APP" rev-parse --short HEAD))"
 
 # ---------- 4. segredos, instalação e serviço ----------
