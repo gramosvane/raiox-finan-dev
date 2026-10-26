@@ -150,6 +150,9 @@ onRecordCreateRequest((e) => {
         if (catReceita.getString('tipo') !== 'receita') {
           throw new BadRequestError('A categoria da receita deve ser uma categoria de receita.')
         }
+        if (!catReceita.getBool('ativa')) {
+          throw new BadRequestError('A categoria da receita está inativa.')
+        }
         const catsDespesa = {}
         for (const it of itens) {
           if (!catsDespesa[it.categoria_id]) {
@@ -161,6 +164,9 @@ onRecordCreateRequest((e) => {
             }
             if (c.getString('tipo') !== 'despesa') {
               throw new BadRequestError('A categoria de cada despesa do caixa deve ser uma categoria de despesa.')
+            }
+            if (!c.getBool('ativa')) {
+              throw new BadRequestError('Há categoria de despesa inativa na lista.')
             }
             catsDespesa[it.categoria_id] = c
           }

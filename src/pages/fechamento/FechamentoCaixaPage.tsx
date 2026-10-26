@@ -799,7 +799,7 @@ export const FechamentoCaixaPage: React.FC = () => {
                     <TableCell>
                       {f.estornado ? (
                         'Estornado'
-                      ) : f.caixa && !somenteLeitura ? (
+                      ) : f.caixa && ehAdmin ? (
                         <Button
                           type="button"
                           variant="outline"
@@ -833,7 +833,8 @@ export const FechamentoCaixaPage: React.FC = () => {
                 ? `${estornando.caixa} · fita ${estornando.numero_fita} · ${dataBR(estornando.data)}. `
                 : ''}
               Os lançamentos gerados por ele serão estornados. Se algum recebimento de PIX ou cartão já
-              tiver baixa, estorne a baixa antes.
+              tiver sido baixado, o fechamento não pode ser estornado: registre a correção com um
+              lançamento de ajuste.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">

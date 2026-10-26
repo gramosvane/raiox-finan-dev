@@ -4,14 +4,16 @@
 // manual do sistema: lançamento REALIZADO ganha um contra-lançamento (estorno_de); lançamento PREVISTO que ainda
 // não foi baixado passa a 'estornado' (o DRE e o Contas a Receber já ignoram esse status). Registra a auditoria e
 // marca o fechamento como estornado (a fita pode então ser registrada de novo).
-// Se QUALQUER lançamento do fechamento já tiver baixa (PIX/cartão recebido), NADA é feito: estorne a baixa antes.
+// Se QUALQUER lançamento do fechamento já tiver baixa (PIX/cartão recebido), NADA é feito: o sistema não permite
+// estornar uma baixa, então a correção nesse caso é um lançamento de ajuste.
+// Só o administrador estorna (validado aqui, no servidor).
 routerAdd('POST', '/backend/v1/fechamento/estornar', (e) => {
   if (!e.auth || e.auth.collection().name !== 'users') {
     return e.json(401, { success: false, message: 'Operação negada: usuário não autenticado.' })
   }
-  const papel = e.auth.getString('role')
-  if (papel === 'leitura' || papel === '') {
-    return e.json(403, { success: false, message: 'Operação negada: seu cargo não pode estornar.' })
+  // Estornar um fechamento desfaz um conjunto de lançamentos: só o administrador (validado aqui no servidor).
+  if (e.auth.getString('role') !== 'administrador') {
+    return e.json(403, { success: false, message: 'Operação negada: só o administrador pode estornar um fechamento.' })
   }
   const corpo = (e.requestInfo() && e.requestInfo().body) || {}
   const id = String(corpo.id || '').trim()
@@ -48,7 +50,7 @@ routerAdd('POST', '/backend/v1/fechamento/estornar', (e) => {
           txApp.findRecordsByFilter('lancamentos', "liquidacao_de = {:i} && status != 'estornado'", '', 1, 0, { i: o.id }) || []
         if (baixas.length > 0) {
           throw new BadRequestError(
-            'Já existe baixa em "' + o.getString('descricao') + '". Estorne a baixa em Contas a Receber antes de estornar o fechamento.',
+            'Já existe recebimento baixado em "' + o.getString('descricao') + '". Um fechamento com recebimento já baixado não pode ser estornado; registre a correção com um lançamento de ajuste.',
           )
         }
       }
@@ -100,7 +102,7 @@ routerAdd('POST', '/backend/v1/fechamento/estornar', (e) => {
     })
   } catch (err) {
     const msg = err && err.message ? String(err.message) : ''
-    const conhecida = /Fechamento|fechamento|baixa|Informe|estornad|conferência/.test(msg)
+    const conhecida = /Fechamento|fechamento|baixado|Informe|estornad|conferência/.test(msg)
     if (!conhecida) console.error('fechamento_estorno: falha:', msg)
     return e.json(400, {
       success: false,
