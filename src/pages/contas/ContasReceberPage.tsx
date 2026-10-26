@@ -5,6 +5,7 @@ import { hojeBrasil, formatarDataCivil, diferencaDiasCivil } from '@/lib/dataCiv
 import { getLancamentos, getCategorias, registrarRealizacaoLancamento } from '@/services/financial'
 import { Lancamento, Categoria } from '@/types/financial'
 import { SeletorContaBaixa } from '@/components/SeletorContaBaixa'
+import { DepositosMaquineta } from '@/pages/contas/DepositosMaquineta'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -222,6 +223,8 @@ export const ContasReceberPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <DepositosMaquineta onMudou={carregarRecebiveis} />
 
       {/* Cards Resumo Topo - Padrão Painel Executivo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
