@@ -24,6 +24,14 @@ USUARIO="${RAIOX_USUARIO:-raiox}"
 LOCK_SHA256_ESPERADO="27036301a05e00fc651848241b6dc52adce07bd215a6a4359de360ce57d2102a"
 NODE_MAJOR_ESPERADO="24"
 PROD_DIR="/opt/raiox/app"
+# Onde o serviço escuta: 127.0.0.1 (padrão, só dentro do servidor) ou 0.0.0.0 (rede local; o firewall limita a faixa).
+ESCUTA_IP="${RAIOX_ESCUTA_IP:-127.0.0.1}"
+case "$ESCUTA_IP" in 127.0.0.1|0.0.0.0) ;; *) echo "RAIOX_ESCUTA_IP inválido (use 127.0.0.1 ou 0.0.0.0): $ESCUTA_IP" >&2; exit 2 ;; esac
+# Opcionais (usados pelo install.sh): código de ativação do primeiro acesso e superusuário técnico.
+# Os valores vêm por variável de ambiente e NUNCA são impressos.
+CODIGO_ATIVACAO="${RAIOX_CODIGO_ATIVACAO:-}"
+SU_EMAIL="${RAIOX_SUPERUSER_EMAIL:-}"
+SU_SENHA="${RAIOX_SUPERUSER_SENHA:-}"
 MODO="instalar"
 case "${1:-}" in
     "") MODO="instalar" ;;
@@ -168,7 +176,7 @@ UNIT_DESTINO="/etc/systemd/system/$NOME_SERVICO.service"
 UNIT_TMP="$(mktemp --suffix=.service)"
 trap 'rm -f "$UNIT_TMP"' EXIT
 if [ "$MODO" = "ativar" ]; then
-    cp "$UNIT_ORIGEM" "$UNIT_TMP"
+    sed -e "s#--http=127.0.0.1:8090#--http=$ESCUTA_IP:8090#" "$UNIT_ORIGEM" > "$UNIT_TMP"
 else
     # unit derivada: so troca pasta, porta e descricao (mesmas protecoes de seguranca)
     sed -e "s#/opt/raiox/app#$APP_DIR#g" -e "s#127.0.0.1:8090#127.0.0.1:$PORTA#" \
@@ -178,7 +186,8 @@ fi
 systemd-analyze verify "$UNIT_TMP" >/dev/null 2>&1 || falha "systemd-analyze verify reprovou a unit ($UNIT_TMP). Nada foi alterado."
 grep -q "^User=$USUARIO\$" "$UNIT_TMP" || falha "A unit não executa como $USUARIO."
 grep -q "^WorkingDirectory=$APP_DIR\$" "$UNIT_TMP" || falha "WorkingDirectory da unit não é $APP_DIR."
-grep -q "^ExecStart=$APP_DIR/pocketbase serve --http=127.0.0.1:$PORTA\$" "$UNIT_TMP" || falha "ExecStart da unit inesperado."
+IP_UNIT="127.0.0.1"; [ "$MODO" = "ativar" ] && IP_UNIT="$ESCUTA_IP"
+grep -q "^ExecStart=$APP_DIR/pocketbase serve --http=$IP_UNIT:$PORTA\$" "$UNIT_TMP" || falha "ExecStart da unit inesperado."
 if [ -f "$UNIT_DESTINO" ] && [ ! -L "$UNIT_DESTINO" ] && ! cmp -s "$UNIT_TMP" "$UNIT_DESTINO"; then
     falha "$UNIT_DESTINO já existe e é diferente da unit esperada. Não vou sobrescrever; revise."
 fi
@@ -208,6 +217,16 @@ if [ ! -e "$APP_DIR/pb_data" ]; then
     ok "pb_data criado vazio (modo 700, dono $USUARIO)"
 fi
 chmod 600 "$ENV_ARQ"
+# Antes de ligar o serviço (sem janela aberta): código de ativação e superusuário técnico.
+if [ -n "$CODIGO_ATIVACAO" ]; then
+    printf '%s
+' "$CODIGO_ATIVACAO" | install -m 600 -o "$USUARIO" -g "$USUARIO" /dev/stdin "$APP_DIR/pb_data/ativacao.codigo"
+    ok "Código de ativação do primeiro acesso gravado (será apagado quando o administrador for criado)"
+fi
+if [ -n "$SU_EMAIL" ] && [ -n "$SU_SENHA" ]; then
+    U "$APP_DIR/pocketbase" superuser upsert "$SU_EMAIL" "$SU_SENHA" --dir="$APP_DIR/pb_data" --migrationsDir="$APP_DIR/server/pb_migrations" --hooksDir="$APP_DIR/server/pb_hooks" >/dev/null 2>&1         || { echo "[ERRO]  Não consegui criar o superusuário técnico." >&2; false; }
+    ok "Superusuário técnico criado (credenciais só no arquivo do administrador do servidor)"
+fi
 if [ "$(systemctl is-enabled "$NOME_SERVICO" 2>&1 || true)" = "masked" ]; then
     systemctl unmask "$NOME_SERVICO"; DESMASCAROU=1
     ok "Unit $NOME_SERVICO desmascarada"
@@ -222,7 +241,11 @@ for _ in $(seq 1 20); do
 done
 curl -fsS -m 3 "http://127.0.0.1:$PORTA/api/health" >/dev/null 2>&1 || { echo "[ERRO]  O serviço não respondeu em 20 s (veja: journalctl -u $NOME_SERVICO -n 50)." >&2; false; }
 ESCUTA="$(ss -tln | awk '{print $4}' | grep -E "[:.]$PORTA\$" | sort -u | tr '\n' ' ')"
-[ "$ESCUTA" = "127.0.0.1:$PORTA " ] || { echo "[ERRO]  Escuta inesperada na $PORTA: '$ESCUTA' (esperado só 127.0.0.1:$PORTA)." >&2; false; }
+if [ "$IP_UNIT" = "127.0.0.1" ]; then
+    [ "$ESCUTA" = "127.0.0.1:$PORTA " ] || { echo "[ERRO]  Escuta inesperada na $PORTA: '$ESCUTA' (esperado só 127.0.0.1:$PORTA)." >&2; false; }
+else
+    case "$ESCUTA" in "0.0.0.0:$PORTA "|"*:$PORTA ") ;; *) echo "[ERRO]  Escuta inesperada na $PORTA: '$ESCUTA' (esperado a rede local)." >&2; false ;; esac
+fi
 # Hook com erro de execucao NAO derruba o PocketBase nem o /api/health (regras do servidor deixariam de valer):
 # o log desta subida precisa estar limpo, senao a ativacao e desfeita como qualquer outra falha.
 sleep 2
@@ -233,8 +256,9 @@ FALHAS_HOOK="$(journalctl -u "$NOME_SERVICO" --no-pager --since "$INICIO_TS" 2>/
 ok "Log da subida sem 'Failed to execute' (hooks carregados)"
 trap 'rm -f "$UNIT_TMP"' EXIT
 trap - ERR
-ok "Serviço $NOME_SERVICO ativo, /api/health 200, escutando só em 127.0.0.1:$PORTA"
-if [ "$MODO" = "ativar" ]; then
+if [ "$IP_UNIT" = "127.0.0.1" ]; then ok "Serviço $NOME_SERVICO ativo, /api/health 200, escutando só em 127.0.0.1:$PORTA"
+else ok "Serviço $NOME_SERVICO ativo, /api/health 200, escutando na rede local (porta $PORTA; o firewall limita a faixa)"; fi
+if [ "$MODO" = "ativar" ] && [ -z "$CODIGO_ATIVACAO" ]; then
 cat <<'FIM'
 
 PRÓXIMOS PASSOS (manuais, do Owner; veja docs/operacao/02-go-live.md):

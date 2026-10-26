@@ -31,13 +31,15 @@ export const PrimeiroAcessoPage: React.FC = () => {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [confirma, setConfirma] = useState('')
+  const [exigeCodigo, setExigeCodigo] = useState(false)
+  const [codigo, setCodigo] = useState('')
 
   const [senhaMestra, setSenhaMestra] = useState('')
   const [confirmaMestra, setConfirmaMestra] = useState('')
 
   useEffect(() => {
     let ativo = true
-    pb.send<{ success: boolean; inicializado: boolean }>('/backend/v1/setup/status', {
+    pb.send<{ success: boolean; inicializado: boolean; exigeCodigo?: boolean }>('/backend/v1/setup/status', {
       method: 'GET',
     })
       .then((res) => {
@@ -45,6 +47,7 @@ export const PrimeiroAcessoPage: React.FC = () => {
         if (res.inicializado) {
           navigate('/', { replace: true })
         } else {
+          setExigeCodigo(!!res.exigeCodigo)
           setEtapa('administrador')
         }
       })
@@ -69,6 +72,7 @@ export const PrimeiroAcessoPage: React.FC = () => {
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setErro('Informe um e-mail válido.')
     if (senha.length < 8) return setErro('A senha deve ter pelo menos 8 caracteres.')
     if (senha !== confirma) return setErro('As senhas digitadas não coincidem.')
+    if (exigeCodigo && !codigo.trim()) return setErro('Informe o código de ativação.')
 
     setLoading(true)
     try {
@@ -80,6 +84,7 @@ export const PrimeiroAcessoPage: React.FC = () => {
           email: email.trim(),
           password: senha,
           passwordConfirm: confirma,
+          codigo: codigo.trim(),
         },
       })
       await pb.collection('users').authWithPassword(email.trim(), senha)
@@ -126,7 +131,7 @@ export const PrimeiroAcessoPage: React.FC = () => {
             <DollarSign className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Raio-X Financeiro
+            e-audit
           </h1>
           <p className="text-sm text-slate-500 mt-1">Primeiro acesso ao sistema</p>
         </div>
@@ -168,6 +173,20 @@ export const PrimeiroAcessoPage: React.FC = () => {
                   <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     <span>{erro}</span>
+                  </div>
+                )}
+                {exigeCodigo && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pa-codigo" className="text-xs text-slate-700 font-semibold">
+                      Código de ativação
+                    </Label>
+                    <Input
+                      id="pa-codigo"
+                      value={codigo}
+                      autoComplete="off"
+                      placeholder="Aparece na tela do servidor ao final da instalação"
+                      onChange={(e) => setCodigo(e.target.value)}
+                    />
                   </div>
                 )}
                 <div className="space-y-1.5">
