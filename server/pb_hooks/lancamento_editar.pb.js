@@ -107,6 +107,24 @@ routerAdd(
       })
     }
 
+    // A despesa de taxa de um depósito conferido só muda pela função "Corrigir" do depósito (o gancho
+    // deposito_protege_taxa também barra o salvamento; esta checagem devolve a mensagem clara em vez de erro 500).
+    let usosTaxaDeposito = 0
+    try {
+      usosTaxaDeposito =
+        $app.countRecords('depositos', $dbx.exp('taxa_lancamento_id = {:i}', { i: lancId })) +
+        $app.countRecords('depositos_correcoes', $dbx.exp('taxa_lancamento_id = {:i}', { i: lancId }))
+    } catch (_) {
+      usosTaxaDeposito = 0
+    }
+    if (usosTaxaDeposito > 0) {
+      return e.json(400, {
+        success: false,
+        message:
+          'Operação negada: esta despesa é a taxa de um depósito conferido. Use "Corrigir" no depósito (Contas a Receber).',
+      })
+    }
+
     // Operador só pode editar lançamentos criados por ele mesmo
     if (userRole === 'operador' && lancRecord.getString('usuario_id') !== e.auth.id) {
       return e.json(403, {
