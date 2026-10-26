@@ -360,17 +360,33 @@ export const ConfiguracoesPage: React.FC = () => {
       carregarTudo()
       toast({ title: 'Conta criada com sucesso.' })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: err?.message })
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível criar a conta',
+        description: err?.response?.message || err?.message,
+      })
     }
   }
 
   const handleExcluirConta = async (id: string) => {
+    const conta = contas.find((c) => c.id === id)
+    if (
+      !window.confirm(
+        `Excluir a conta "${conta?.nome || ''}"? Só é possível se ela ainda não tiver nenhum lançamento.`,
+      )
+    ) {
+      return
+    }
     try {
       await deleteConta(id)
       carregarTudo()
       toast({ title: 'Conta removida.' })
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Erro', description: err?.message })
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível excluir a conta',
+        description: err?.response?.message || err?.message,
+      })
     }
   }
 

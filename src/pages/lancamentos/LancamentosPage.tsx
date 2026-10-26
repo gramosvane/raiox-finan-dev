@@ -218,7 +218,7 @@ export const LancamentosPage: React.FC = () => {
     setNovaDescricao('')
     setNovaCategoria('')
     setNovoDepartamento('')
-    setNovaConta(contas[0]?.nome || '')
+    setNovaConta('')
     const empPadrao = empresas.find((e) => e.padrao) || empresas[0]
     setNovaEmpresaId(empPadrao?.id || '')
     setNovoValor('')
@@ -265,6 +265,9 @@ export const LancamentosPage: React.FC = () => {
       if (novaDataLancamento && novaDataLancamento.slice(0, 10) > hoje) {
         errs.data_lancamento =
           'Lançamento realizado não pode ter data futura. Para valores futuros, use o status Previsto.'
+      }
+      if (!novaConta) {
+        errs.conta = 'Escolha a conta (caixa ou banco) por onde o dinheiro entrou ou saiu.'
       }
     }
 
@@ -1152,6 +1155,7 @@ export const LancamentosPage: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
+              {formErrors.conta && <p className="text-[11px] text-rose-500">{formErrors.conta}</p>}
             </div>
 
             {/* Data do Lançamento (Data de competência) e Status */}

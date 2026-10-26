@@ -9,9 +9,9 @@
 //   esperado_dinheiro  = dinheiro recebido - despesas do caixa (soma da lista despesas_itens)
 //   diferenca          = dinheiro_contado - esperado_dinheiro (negativo = falta; positivo = sobra)
 // Na MESMA transação do registro (tudo ou nada), com o usuário logado como responsável, o servidor gera:
-//   - receita do DINHEIRO (realizada) na categoria escolhida;
+//   - receita do DINHEIRO (realizada) na categoria escolhida, na CONTA do caixa informada (tipo caixa, ex.: Cofre);
 //   - receitas de PIX, débito e crédito PREVISTAS, com vencimento = data + prazo da forma (permissoes:
-//     prazo_pix, prazo_debito, prazo_credito; padrão 1, 1 e 30 dias). A baixa é a baixa normal do Contas a Receber;
+//     prazo_pix, prazo_debito, prazo_credito; padrão 0, 1 e 31 dias, como a Rede/Itaú repassa). A baixa é a baixa normal do Contas a Receber;
 //   - uma despesa realizada por item de despesas_itens, na categoria de cada item.
 //
 // MODO CONFERÊNCIA (sem categoria_id; clientes antigos): só confere e NÃO gera lançamento.
@@ -67,6 +67,8 @@ onRecordCreateRequest((e) => {
   const gerar = categoriaReceitaId !== ''
   const caixa = String(corpo.caixa || '').trim().slice(0, 40)
   const numeroFita = String(corpo.numero_fita || '').trim().slice(0, 40)
+  const contaInformada = String(corpo.conta || '').trim()
+  let contaCaixa = ''
 
   // despesas do caixa (lista) — só no modo geração
   const itens = []
@@ -74,6 +76,7 @@ onRecordCreateRequest((e) => {
     if (!temFita) throw new BadRequestError('Informe o valor (total bruto da fita).')
     if (!caixa) throw new BadRequestError('Informe o caixa.')
     if (!numeroFita) throw new BadRequestError('Informe o número da fita.')
+    if (!contaInformada) throw new BadRequestError('Escolha a conta do caixa onde o dinheiro fica (ex.: Cofre).')
     const bruto = Array.isArray(corpo.despesas) ? corpo.despesas : []
     if (bruto.length > 50) throw new BadRequestError('Muitas despesas na lista (máximo 50).')
     let soma = 0
@@ -171,6 +174,28 @@ onRecordCreateRequest((e) => {
             catsDespesa[it.categoria_id] = c
           }
         }
+        // conta do dinheiro: precisa existir na empresa e ser do tipo caixa (nome canônico do cadastro)
+        const normaliza = (s) => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase()
+        let contasEmp = []
+        try {
+          contasEmp = txApp.findRecordsByFilter('contas', "empresa_id = {:e} || empresa_id = ''", '', 500, 0, { e: empresaId }) || []
+        } catch (_) {}
+        let contaRec = null
+        for (const c of contasEmp) {
+          if (normaliza(c.getString('nome')) === normaliza(contaInformada)) {
+            contaRec = c
+            break
+          }
+        }
+        if (!contaRec) {
+          throw new BadRequestError('A conta informada não existe. Cadastre-a em Configurações, Contas Bancárias / Caixa.')
+        }
+        if (contaRec.getString('tipo') !== 'caixa') {
+          throw new BadRequestError('O dinheiro do caixa deve entrar em uma conta do tipo caixa (ex.: Cofre).')
+        }
+        contaCaixa = contaRec.getString('nome')
+        rec.set('conta', contaCaixa)
+
         let jaExiste = false
         try {
           txApp.findFirstRecordByFilter(
@@ -201,7 +226,7 @@ onRecordCreateRequest((e) => {
         }
         const colLanc = txApp.findCollectionByNameOrId('lancamentos')
         const rotulo = caixa + ' nº ' + numeroFita + ' de ' + dataBR(dataTxt)
-        const criar = (tipo, descricao, cat, valor, status, vencimento) => {
+        const criar = (tipo, descricao, cat, valor, status, vencimento, conta) => {
           const l = new Record(colLanc)
           l.set('tipo', tipo)
           l.set('descricao', descricao)
@@ -213,6 +238,7 @@ onRecordCreateRequest((e) => {
           l.set('status', status)
           if (status === 'realizado') l.set('data_realizacao', dataTxt)
           if (vencimento) l.set('data_vencimento', vencimento)
+          if (conta) l.set('conta', conta)
           l.set('empresa_id', empresaId)
           l.set('usuario_id', e.auth.id)
           l.set('fechamento_id', e.record.id)
@@ -221,20 +247,20 @@ onRecordCreateRequest((e) => {
         }
         const catReceita = txApp.findRecordById('categorias', categoriaReceitaId)
         if (dinheiroRecebido > 0) {
-          criar('receita', 'Fechamento ' + rotulo + ' - dinheiro', catReceita, dinheiroRecebido, 'realizado', '')
+          criar('receita', 'Fechamento ' + rotulo + ' - dinheiro', catReceita, dinheiroRecebido, 'realizado', '', contaCaixa)
         }
         if (v.maquineta_pix > 0) {
-          criar('receita', 'Fechamento ' + rotulo + ' - PIX', catReceita, v.maquineta_pix, 'previsto', somaDias(dataTxt, prazo('prazo_pix', 1)))
+          criar('receita', 'Fechamento ' + rotulo + ' - PIX', catReceita, v.maquineta_pix, 'previsto', somaDias(dataTxt, prazo('prazo_pix', 0)))
         }
         if (v.maquineta_debito > 0) {
           criar('receita', 'Fechamento ' + rotulo + ' - cartão de débito', catReceita, v.maquineta_debito, 'previsto', somaDias(dataTxt, prazo('prazo_debito', 1)))
         }
         if (v.maquineta_credito > 0) {
-          criar('receita', 'Fechamento ' + rotulo + ' - cartão de crédito', catReceita, v.maquineta_credito, 'previsto', somaDias(dataTxt, prazo('prazo_credito', 30)))
+          criar('receita', 'Fechamento ' + rotulo + ' - cartão de crédito', catReceita, v.maquineta_credito, 'previsto', somaDias(dataTxt, prazo('prazo_credito', 31)))
         }
         for (const it of itens) {
           const c = txApp.findRecordById('categorias', it.categoria_id)
-          criar('despesa', 'Despesa do ' + caixa + ' - ' + it.descricao, c, it.valor, 'realizado', '')
+          criar('despesa', 'Despesa do ' + caixa + ' - ' + it.descricao, c, it.valor, 'realizado', '', contaCaixa)
         }
       }
     } finally {

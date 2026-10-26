@@ -73,6 +73,7 @@ routerAdd('POST', '/backend/v1/fechamento/estornar', (e) => {
           x.set('empresa_id', o.getString('empresa_id'))
           x.set('usuario_id', e.auth.id)
           x.set('estorno_de', o.id)
+          if (o.getString('conta')) x.set('conta', o.getString('conta'))
           x.set('fechamento_id', id)
           txApp.save(x)
           estornosRealizados++

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { getCategorias } from '@/services/financial'
+import { SeletorContaBaixa } from '@/components/SeletorContaBaixa'
 import type { Categoria } from '@/types/financial'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -77,7 +78,7 @@ interface LinhaDespesa {
   valor: string
 }
 
-const PRAZOS_PADRAO = { prazo_pix: 1, prazo_debito: 1, prazo_credito: 30 }
+const PRAZOS_PADRAO = { prazo_pix: 0, prazo_debito: 1, prazo_credito: 31 }
 
 const brl = (v: number) =>
   (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -120,6 +121,7 @@ export const FechamentoCaixaPage: React.FC = () => {
   const [caixa, setCaixa] = useState('')
   const [numeroFita, setNumeroFita] = useState('')
   const [categoriaReceita, setCategoriaReceita] = useState('')
+  const [contaCaixa, setContaCaixa] = useState('')
   const [pix, setPix] = useState('')
   const [credito, setCredito] = useState('')
   const [debito, setDebito] = useState('')
@@ -129,7 +131,7 @@ export const FechamentoCaixaPage: React.FC = () => {
 
   const [prazos, setPrazos] = useState(PRAZOS_PADRAO)
   const [prazosReg, setPrazosReg] = useState<Record<string, PermissaoLinha>>({})
-  const [prazosTxt, setPrazosTxt] = useState({ prazo_pix: '1', prazo_debito: '1', prazo_credito: '30' })
+  const [prazosTxt, setPrazosTxt] = useState({ prazo_pix: '0', prazo_debito: '1', prazo_credito: '31' })
 
   const [limite, setLimite] = useState<number | null>(null)
   const [limiteReg, setLimiteReg] = useState<PermissaoLinha | null>(null)
@@ -292,6 +294,7 @@ export const FechamentoCaixaPage: React.FC = () => {
     if (!caixa.trim()) return setErro('Informe o caixa.')
     if (!numeroFita.trim()) return setErro('Informe o número da fita.')
     if (!categoriaReceita) return setErro('Escolha a categoria da receita.')
+    if (!contaCaixa) return setErro('Escolha a conta do caixa onde o dinheiro fica.')
     if (contado.trim() === '') return setErro('Informe o dinheiro contado na gaveta.')
     if (formasMaiorQueFita) return setErro('PIX, crédito e débito somam mais que o valor da fita.')
     if (despesasMaiorQueDinheiro) return setErro('As despesas do caixa são maiores que o dinheiro recebido.')
@@ -309,6 +312,7 @@ export const FechamentoCaixaPage: React.FC = () => {
         caixa: caixa.trim(),
         numero_fita: numeroFita.trim(),
         categoria_id: categoriaReceita,
+        conta: contaCaixa,
         maquineta_pix: num(pix),
         maquineta_credito: num(credito),
         maquineta_debito: num(debito),
@@ -445,6 +449,16 @@ export const FechamentoCaixaPage: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="max-w-sm">
+                <SeletorContaBaixa
+                  id="fc-conta"
+                  rotulo="Conta do dinheiro do caixa (ex.: Cofre)"
+                  tipos={['caixa']}
+                  value={contaCaixa}
+                  onChange={setContaCaixa}
+                />
               </div>
 
               <div className="grid gap-4 md:grid-cols-4">

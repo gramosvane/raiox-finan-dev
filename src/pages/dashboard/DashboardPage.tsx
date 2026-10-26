@@ -14,6 +14,7 @@ import {
   getPatrimonio,
 } from '@/services/financial'
 import { Lancamento, Conta, Categoria, Empresa, ItemPatrimonio } from '@/types/financial'
+import { SeletorContaBaixa } from '@/components/SeletorContaBaixa'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -321,6 +322,10 @@ export const DashboardPage: React.FC = () => {
   // Modal para liquidar/marcar como realizado
   const [realizarItem, setRealizarItem] = useState<Lancamento | null>(null)
   const [dataRealizacao, setDataRealizacao] = useState(() => hojeBrasil())
+  const [contaBaixa, setContaBaixa] = useState('')
+  useEffect(() => {
+    setContaBaixa('')
+  }, [realizarItem])
   const [liquidando, setLiquidando] = useState(false)
 
   const carregarDashboard = async () => {
@@ -693,9 +698,18 @@ export const DashboardPage: React.FC = () => {
       return
     }
 
+    if (!contaBaixa) {
+      toast({
+        variant: 'destructive',
+        title: 'Escolha a conta',
+        description: 'Informe a conta (caixa ou banco) onde o dinheiro entrou ou de onde saiu.',
+      })
+      return
+    }
+
     setLiquidando(true)
     try {
-      await registrarRealizacaoLancamento(realizarItem, dataRealizacao)
+      await registrarRealizacaoLancamento(realizarItem, dataRealizacao, contaBaixa)
       toast({
         title: 'Movimento realizado!',
         description: 'Lançamento liquidado e incorporado ao caixa do sistema.',
@@ -1589,6 +1603,18 @@ export const DashboardPage: React.FC = () => {
                   className="bg-white border-slate-200 text-xs rounded-xl"
                 />
               </div>
+
+              <SeletorContaBaixa
+                id="conta-baixa-painel"
+                rotulo={
+                  realizarItem.tipo === 'receita'
+                    ? 'Conta onde o dinheiro entrou'
+                    : 'Conta de onde o dinheiro saiu'
+                }
+                tipos={realizarItem.tipo === 'receita' ? ['caixa', 'banco'] : undefined}
+                value={contaBaixa}
+                onChange={setContaBaixa}
+              />
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">

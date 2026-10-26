@@ -48,7 +48,6 @@ const PLANO: SecaoPlano[] = [
     itens: [
       d('2.1 Simples Nacional (DAS)', 'deducoes_tributos'),
       d('2.2 ISS', 'deducoes_tributos'),
-      d('2.3 Taxas de maquineta e cartão', 'deducoes_tributos'),
       d('2.4 Cancelamentos e abatimentos de mensalidade', 'deducoes_tributos'),
     ],
   },
@@ -97,6 +96,7 @@ const PLANO: SecaoPlano[] = [
       d('5.4 Tarifas bancárias', 'despesa_financeira'),
       d('5.5 Juros de empréstimos e financiamentos', 'despesa_financeira'),
       d('5.6 IOF', 'despesa_financeira'),
+      d('5.7 Taxas de maquineta e cartão', 'despesa_financeira'),
     ],
   },
   {

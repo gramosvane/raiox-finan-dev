@@ -4,6 +4,7 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { hojeBrasil, formatarDataCivil, diferencaDiasCivil } from '@/lib/dataCivil'
 import { getLancamentos, getCategorias, registrarRealizacaoLancamento } from '@/services/financial'
 import { Lancamento, Categoria } from '@/types/financial'
+import { SeletorContaBaixa } from '@/components/SeletorContaBaixa'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -57,6 +58,10 @@ export const ContasReceberPage: React.FC = () => {
   const [liquidarItem, setLiquidarItem] = useState<Lancamento | null>(null)
   const [dataLiquidacao, setDataLiquidacao] = useState(() => hojeBrasil())
   const [liquidando, setLiquidando] = useState(false)
+  const [contaBaixa, setContaBaixa] = useState('')
+  useEffect(() => {
+    setContaBaixa('')
+  }, [liquidarItem])
 
   const carregarRecebiveis = async () => {
     setLoading(true)
@@ -156,9 +161,18 @@ export const ContasReceberPage: React.FC = () => {
       return
     }
 
+    if (!contaBaixa) {
+      toast({
+        variant: 'destructive',
+        title: 'Escolha a conta',
+        description: 'Informe em qual conta o dinheiro entrou (caixa ou banco).',
+      })
+      return
+    }
+
     setLiquidando(true)
     try {
-      await registrarRealizacaoLancamento(liquidarItem, dataLiquidacao)
+      await registrarRealizacaoLancamento(liquidarItem, dataLiquidacao, contaBaixa)
       toast({
         title: 'Recebimento Registrado!',
         description: 'Lançamento marcado como Realizado com sucesso.',
@@ -435,7 +449,7 @@ export const ContasReceberPage: React.FC = () => {
                 Registrar recebimento
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 font-normal">
-                Confirmar entrada de recursos em conta bancária ou caixa da empresa.
+                Confirmar a entrada do dinheiro e escolher em qual conta (caixa ou banco) ele entrou.
               </DialogDescription>
             </DialogHeader>
 
@@ -461,6 +475,14 @@ export const ContasReceberPage: React.FC = () => {
                   className="bg-slate-50 border-slate-200 text-xs rounded-xl"
                 />
               </div>
+
+              <SeletorContaBaixa
+                id="conta-baixa-receber"
+                rotulo="Conta onde o dinheiro entrou"
+                tipos={['caixa', 'banco']}
+                value={contaBaixa}
+                onChange={setContaBaixa}
+              />
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">

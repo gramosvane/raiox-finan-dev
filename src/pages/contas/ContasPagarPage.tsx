@@ -9,6 +9,7 @@ import {
 } from '@/lib/dataCivil'
 import { getLancamentos, getCategorias, registrarRealizacaoLancamento } from '@/services/financial'
 import { Lancamento, Categoria } from '@/types/financial'
+import { SeletorContaBaixa } from '@/components/SeletorContaBaixa'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -61,6 +62,10 @@ export const ContasPagarPage: React.FC = () => {
   const [liquidarItem, setLiquidarItem] = useState<Lancamento | null>(null)
   const [dataLiquidacao, setDataLiquidacao] = useState(() => hojeBrasil())
   const [liquidando, setLiquidando] = useState(false)
+  const [contaBaixa, setContaBaixa] = useState('')
+  useEffect(() => {
+    setContaBaixa('')
+  }, [liquidarItem])
 
   const carregarObrigacoes = async () => {
     setLoading(true)
@@ -183,9 +188,18 @@ export const ContasPagarPage: React.FC = () => {
       return
     }
 
+    if (!contaBaixa) {
+      toast({
+        variant: 'destructive',
+        title: 'Escolha a conta',
+        description: 'Informe de qual conta o dinheiro saiu (caixa ou banco).',
+      })
+      return
+    }
+
     setLiquidando(true)
     try {
-      await registrarRealizacaoLancamento(liquidarItem, dataLiquidacao)
+      await registrarRealizacaoLancamento(liquidarItem, dataLiquidacao, contaBaixa)
       toast({
         title: 'Pagamento Efetuado!',
         description: 'Lançamento liquidado e registrado com sucesso.',
@@ -462,7 +476,7 @@ export const ContasPagarPage: React.FC = () => {
                 Registrar quitação de despesa
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 font-normal">
-                Confirmar saída financeira de conta bancária ou caixa da empresa.
+                Confirmar a saída do dinheiro e escolher de qual conta (caixa ou banco) ele saiu.
               </DialogDescription>
             </DialogHeader>
 
@@ -488,6 +502,13 @@ export const ContasPagarPage: React.FC = () => {
                   className="bg-slate-50 border-slate-200 text-xs rounded-xl"
                 />
               </div>
+
+              <SeletorContaBaixa
+                id="conta-baixa-pagar"
+                rotulo="Conta de onde o dinheiro saiu"
+                value={contaBaixa}
+                onChange={setContaBaixa}
+              />
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
