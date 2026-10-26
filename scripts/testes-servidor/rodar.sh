@@ -38,6 +38,7 @@ rodar() { # $1=nome  $2=script  $3=porta  $4=modo (api = script recebe URL e pas
 
 rodar "Contas, baixas e restauração de backup" t_contas.py 18138 api
 rodar "Fechamento de caixa (geração, estorno, concorrência, cargos)" t_gerar.py 18139 api
+rodar "Depósito conferido (baixa pelo bruto, taxa, concorrência, correção)" t_deposito.py 18140 api
 rodar "Homologação oficial (cargos, isolamento entre empresas, segurança)" homolog_oficial.py 18137 homolog
 echo
 if [ "$TOTAL_FALHAS" -eq 0 ]; then echo "[OK] Todas as baterias de servidor passaram."; else echo "[ERRO] $TOTAL_FALHAS falha(s). Não promova esta versão."; exit 1; fi
