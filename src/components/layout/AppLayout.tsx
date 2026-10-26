@@ -276,7 +276,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             </div>
             <div className="hidden sm:flex flex-col">
               <span className="font-bold text-base tracking-tight text-slate-900 flex items-center gap-1.5">
-                Raio-X Financeiro
+                e-Audit
                 <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 tracking-wider">
                   Pro
                 </span>
@@ -599,7 +599,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                     <DollarSign className="w-5 h-5 font-bold" />
                   </div>
                   <div>
-                    <span className="font-bold text-slate-900 text-sm">Raio-X Financeiro</span>
+                    <span className="font-bold text-slate-900 text-sm">e-Audit</span>
                     <p className="text-[10px] text-slate-400">Gestão Empresarial</p>
                   </div>
                 </div>

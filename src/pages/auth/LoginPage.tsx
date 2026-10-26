@@ -142,7 +142,7 @@ export const LoginPage: React.FC = () => {
             <DollarSign className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Raio-X Financeiro
+            e-Audit
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Controle executivo, DRE, ROI e auditoria blindada
@@ -153,7 +153,7 @@ export const LoginPage: React.FC = () => {
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl text-slate-900 font-bold">Acessar Conta</CardTitle>
             <CardDescription className="text-slate-500 text-xs">
-              Informe seu e-mail e senha cadastrados para acessar o sistema.
+              Informe seu usuário e senha para acessar o sistema.
             </CardDescription>
           </CardHeader>
 
@@ -186,7 +186,7 @@ export const LoginPage: React.FC = () => {
 
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-xs text-slate-700 font-semibold">
-                  E-mail ou Usuário
+                  Usuário
                 </Label>
                 <div className="relative">
                   <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -194,7 +194,7 @@ export const LoginPage: React.FC = () => {
                     id="email"
                     type="text"
                     autoComplete="username"
-                    placeholder="seu.usuario ou voce@empresa.com.br"
+                    placeholder="usuário ou e-mail"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="bg-slate-50 border-slate-200 pl-9 text-slate-900 placeholder-slate-400 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-1"
