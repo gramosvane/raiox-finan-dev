@@ -36,6 +36,7 @@ export const SeletorContaBaixa: React.FC<Props> = ({
 }) => {
   const [contas, setContas] = useState<Conta[]>([])
   const [carregado, setCarregado] = useState(false)
+  const [falhou, setFalhou] = useState(false)
 
   useEffect(() => {
     let ativo = true
@@ -43,7 +44,9 @@ export const SeletorContaBaixa: React.FC<Props> = ({
       .then((cs) => {
         if (ativo) setContas(cs)
       })
-      .catch(() => {})
+      .catch(() => {
+        if (ativo) setFalhou(true)
+      })
       .finally(() => {
         if (ativo) setCarregado(true)
       })
@@ -53,16 +56,26 @@ export const SeletorContaBaixa: React.FC<Props> = ({
   }, [])
 
   const aceitas = contas.filter((c) => !tipos || tipos.includes(c.tipo))
+  const descricaoTipos = tipos && tipos.length > 0 ? tipos.map((t) => ROTULO_TIPO[t] || t).join(' ou ') : ''
 
   return (
     <div className="space-y-1">
       <Label htmlFor={id} className="text-xs font-medium text-slate-600">
         {rotulo}
       </Label>
-      {carregado && aceitas.length === 0 ? (
+      {carregado && falhou ? (
         <p className="text-xs text-rose-700">
-          Nenhuma conta cadastrada para esta operação. Cadastre em{' '}
-          <Link to="/configuracoes" className="underline font-semibold">
+          Não foi possível carregar as contas. Recarregue a página e tente de novo.
+        </p>
+      ) : carregado && aceitas.length === 0 ? (
+        <p className="text-xs text-rose-700">
+          Nenhuma conta{descricaoTipos ? ` do tipo ${descricaoTipos}` : ''} cadastrada. Cadastre em{' '}
+          <Link
+            to="/configuracoes"
+            target="_blank"
+            rel="noreferrer"
+            className="underline font-semibold"
+          >
             Configurações → Contas Bancárias / Caixa
           </Link>
           .

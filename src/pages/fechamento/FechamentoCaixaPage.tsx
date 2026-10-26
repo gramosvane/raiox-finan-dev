@@ -45,6 +45,7 @@ interface Fechamento {
   data: string
   caixa?: string
   numero_fita?: string
+  conta?: string
   total_fita?: number
   total_sistema: number
   maquineta_pix: number
@@ -384,8 +385,9 @@ export const FechamentoCaixaPage: React.FC = () => {
           <CardHeader>
             <CardTitle className="text-lg">Novo fechamento</CardTitle>
             <CardDescription>
-              Cada fita é registrada uma vez por caixa. Para corrigir, estorne o fechamento e registre de
-              novo.
+              Cada fita é registrada uma vez por caixa. Para corrigir, o administrador estorna o
+              fechamento e você registra de novo. Se algum PIX ou cartão dessa fita já foi baixado, não
+              dá para estornar: registre um lançamento de ajuste.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -579,7 +581,8 @@ export const FechamentoCaixaPage: React.FC = () => {
                   <ul className="text-slate-700 space-y-0.5">
                     {dinheiroRecebido > 0 && (
                       <li>
-                        Receita em dinheiro, realizada hoje: <b>{brl(dinheiroRecebido)}</b>
+                        Receita em dinheiro, realizada em {dataBR(data)}, na conta{' '}
+                        {contaCaixa || '(escolha a conta)'}: <b>{brl(dinheiroRecebido)}</b>
                       </li>
                     )}
                     {num(pix) > 0 && (
@@ -648,8 +651,8 @@ export const FechamentoCaixaPage: React.FC = () => {
               {dataBR(resultado.data)}
             </CardTitle>
             <CardDescription>
-              Os lançamentos já estão em Lançamentos; PIX e cartões aparecem em Contas a Receber até a
-              baixa.
+              Os lançamentos já estão em Lançamentos (dinheiro na conta {resultado.conta || '—'}); PIX e
+              cartões aparecem em Contas a Receber até a baixa.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-4 text-sm">

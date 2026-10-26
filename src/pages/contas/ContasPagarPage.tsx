@@ -509,6 +509,10 @@ export const ContasPagarPage: React.FC = () => {
                 value={contaBaixa}
                 onChange={setContaBaixa}
               />
+
+              <p className="text-[11px] text-slate-500">
+                A baixa não pode ser desfeita: confira a data e a conta antes de confirmar.
+              </p>
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">

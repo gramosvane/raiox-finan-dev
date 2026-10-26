@@ -175,7 +175,13 @@ onRecordCreateRequest((e) => {
           }
         }
         // conta do dinheiro: precisa existir na empresa e ser do tipo caixa (nome canônico do cadastro)
-        const normaliza = (s) => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase()
+        const normaliza = (s) => {
+          let t = String(s || '').replace(/[\u200B-\u200D\uFEFF]/g, '')
+          try {
+            t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          } catch (_) {}
+          return t.trim().replace(/\s+/g, ' ').toLowerCase()
+        }
         let contasEmp = []
         try {
           contasEmp = txApp.findRecordsByFilter('contas', "empresa_id = {:e} || empresa_id = ''", '', 500, 0, { e: empresaId }) || []

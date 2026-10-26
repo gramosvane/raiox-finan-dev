@@ -745,7 +745,8 @@ export async function restaurarBackup(
         ? lancamentoIdMap.get(l.liquidacao_de) || l.liquidacao_de
         : null
 
-      const created = await pb.collection('lancamentos').create({
+      const created = await pb.collection('lancamentos').create(
+        {
         tipo: l.tipo,
         descricao: l.descricao,
         categoria: finalCategoriaNome,
@@ -764,7 +765,10 @@ export async function restaurarBackup(
         empresa_id: novaEmpresaId,
         estorno_de: novoEstornoDe,
         liquidacao_de: novaLiquidacaoDe,
-      })
+        },
+        // O histórico antigo tem baixas sem conta: o servidor só dispensa a conta para o administrador.
+        { headers: { 'X-Restauracao-Backup': '1' } },
+      )
       if (l.id) {
         existingLancIds.add(l.id)
         lancamentoIdMap.set(l.id, created.id)

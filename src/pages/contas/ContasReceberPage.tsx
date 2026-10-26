@@ -483,6 +483,14 @@ export const ContasReceberPage: React.FC = () => {
                 value={contaBaixa}
                 onChange={setContaBaixa}
               />
+
+              <p className="text-[11px] text-slate-500">
+                A baixa não pode ser desfeita: confira a data e a conta antes de confirmar.
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Títulos de PIX e cartão (maquineta): o valor que cai no banco vem descontado da taxa. A taxa
+                deve ser lançada à parte, como despesa financeira.
+              </p>
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">

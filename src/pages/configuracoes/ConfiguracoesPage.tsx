@@ -348,7 +348,14 @@ export const ConfiguracoesPage: React.FC = () => {
   // CRUD CONTAS
   const handleCriarConta = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!novaContaNome.trim()) return
+    if (!novaContaNome.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Informe o nome da conta',
+        description: 'Ex.: Cofre, Itaú, Bradesco, Sicredi.',
+      })
+      return
+    }
     try {
       await createConta({
         nome: novaContaNome.trim(),
