@@ -342,7 +342,7 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
   }
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs space-y-4">
+    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs space-y-4 min-w-0 max-w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
@@ -368,17 +368,15 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
       ) : depositos.length === 0 ? (
         <p className="text-sm text-slate-500">Nenhum depósito registrado ainda.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-w-full">
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-slate-500 border-b">
-                <th className="py-2 pr-3">Depósito</th>
-                <th className="pr-3">Conta</th>
-                <th className="pr-3">Títulos</th>
-                <th className="pr-3">Bruto</th>
-                <th className="pr-3">Caiu no banco</th>
-                <th className="pr-3">Taxa</th>
-                <th className="pr-3">%</th>
+                <th className="py-2 pr-2">Depósito</th>
+                <th className="pr-2">Conta</th>
+                <th className="pr-2">Bruto</th>
+                <th className="pr-2">Caiu no banco</th>
+                <th className="pr-2">Taxa</th>
                 <th />
               </tr>
             </thead>
@@ -388,11 +386,13 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
                 const perc = d.valor_bruto > 0 ? Math.round((v.taxa / d.valor_bruto) * 10000) / 100 : 0
                 return (
                   <tr key={d.id} className="border-b align-top">
-                    <td className="py-2 pr-3">
+                    <td className="py-2 pr-2">
                       {formatarDataCivil(d.data_deposito)}
                       {v.corrigido && <span className="ml-1 text-amber-700">(corrigido)</span>}
                       <details className="text-[11px] text-slate-500">
-                        <summary className="cursor-pointer">composição</summary>
+                        <summary className="cursor-pointer">
+                          {d.qtd_titulos} título(s): composição
+                        </summary>
                         <ul className="list-disc pl-4">
                           {(d.titulos || []).map((t) => (
                             <li key={t.id}>
@@ -408,16 +408,16 @@ export const DepositosMaquineta: React.FC<Props> = ({ onMudou }) => {
                         </div>
                       </details>
                     </td>
-                    <td className="pr-3">{d.conta}</td>
-                    <td className="pr-3">{d.qtd_titulos}</td>
-                    <td className="pr-3">{brl(d.valor_bruto)}</td>
-                    <td className="pr-3">{brl(v.liquido)}</td>
-                    <td className="pr-3">{brl(v.taxa)}</td>
-                    <td className="pr-3">{perc.toLocaleString('pt-BR')}%</td>
+                    <td className="pr-2">{d.conta}</td>
+                    <td className="pr-2">{brl(d.valor_bruto)}</td>
+                    <td className="pr-2">{brl(v.liquido)}</td>
+                    <td className="pr-2">
+                      {brl(v.taxa)} ({perc.toLocaleString('pt-BR')}%)
+                    </td>
                     <td>
                       {ehAdmin && (
                         <Button type="button" variant="outline" size="sm" onClick={() => abrirCorrecao(d)}>
-                          Corrigir valor
+                          Corrigir
                         </Button>
                       )}
                     </td>
