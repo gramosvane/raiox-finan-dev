@@ -41,12 +41,24 @@ A categoria da taxa nova é a do depósito; se ela foi inativada ou saiu do grup
    **Não lance ajuste por conta própria:** todo lançamento realizado exige conta e muda o caixa, que já está certo. Registre só o que o contador definir
    (tipo, status e conta), com descrição clara (depósito, data, conta, título);
 4. **Nunca** presuma que a diferença entre dois depósitos é taxa.
+5. **Caminho rastreável:** o contador define o ajuste (tipo, status, conta); **quem lança é o administrador**, com descrição clara (depósito, data, conta, título) e o motivo;
+   o lançamento vai para a **auditoria** (quem e quando). Sem a definição do contador, nada é lançado.
 Prevenção: confira o resumo antes de confirmar; a tela avisa taxa acima do limite, vencimento futuro e linhas repetidas.
 
 **(c) Escolhi a conta errada.** A baixa não pode ser editada nem estornada. A correção correta é uma **transferência entre contas** (fora do resultado,
 duas pontas), marcada como **correção de conta** e não como movimento bancário. Essa função entra na etapa de transferências. Até lá **não faça
 lançamentos de ajuste manuais** (distorcem o resultado): anote data, valor e as duas contas e aguarde a função. (Em (b) o contador pode definir o ajuste
 porque o problema é de composição; em (c) a ferramenta correta está a caminho e um ajuste manual a tornaria mais difícil de conciliar.) Prevenção: a tela mostra a conta escolhida no resumo.
+
+## PIX: como baixar enquanto ele ainda nasce como "a receber" (rotina PROVISÓRIA)
+O PIX cai no banco na hora e sem taxa, mas o fechamento ainda o grava como "a receber" (sem conta). Até o PIX nascer direto no banco (próximas versões), baixe-o **uma vez por dia**,
+na manhã seguinte, assim:
+1. **Confira a fita** do fechamento e o **extrato do banco onde o PIX entrou** (o total do dia e a data real do crédito).
+2. Em Contas a Receber → Depósitos da maquineta → Registrar depósito: marque **só os PIX daquele dia** (um dia por vez; nunca misture PIX com débito ou crédito).
+3. Digite **uma linha** com a **soma do extrato** e a **data real** em que caiu; escolha o **banco em que entrou**. A taxa tem que dar **zero**: se aparecer taxa, a seleção ou o valor está errado, não confirme.
+4. Confirme e verifique que o "A receber" de PIX **diminuiu pelo valor certo** e que o movimento foi registrado **uma única vez**.
+Enquanto o PIX não tiver sido baixado, o banco **não** mostra esse dinheiro no sistema e o PIX aparece como atrasado a partir do dia seguinte: isso é pendência da conferência, não atraso do banco.
+Não use o botão "Receber" avulso em débito ou crédito (baixa pelo bruto, sem taxa, e não se desfaz). Não lance transferência entre contas à mão (anote data, valor e as duas contas).
 
 ## Configuração (administrador)
 No mesmo cartão: **categoria da taxa** (grupo Despesa financeira, escolhida por id) e **limite da taxa (%)**. A categoria é obrigatória para registrar depósitos com taxa;
