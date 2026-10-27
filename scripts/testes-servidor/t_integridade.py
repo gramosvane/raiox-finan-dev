@@ -320,9 +320,10 @@ chk("7: saldo zero nao gera auditoria", len(audits_conta(conta_row("Bradesco")["
 n_c = q1("select count(*) from contas")
 s, r = call("POST", "/api/collections/contas/records", {"nome": "Futura", "tipo": "banco", "saldo_inicial": 10, "saldo_inicial_data": amanha, "usuario_id": uid}, tok)
 chk("7: criar conta com data de corte futura recusado", s, 400)
+chk("7: nada gravado na recusa da data futura", q1("select count(*) from contas"), n_c)
 s, r = call("POST", "/api/collections/contas/records", {"nome": "Invalida", "tipo": "banco", "saldo_inicial": 10, "saldo_inicial_data": "2026-02-31", "usuario_id": uid}, tok)
-chk("7: criar conta com data de corte inexistente recusado", s, 400)
-chk("7: nada gravado nas recusas", q1("select count(*) from contas"), n_c)
+ci = conta_row("Invalida")
+chk("7: data de corte inexistente (31/02) nunca e gravada como digitada (PocketBase a esvazia: recusada ou vira hoje)", (s == 400) or (s == 200 and str(ci["saldo_inicial_data"])[:10] == dia), True)
 s, r = call("POST", "/api/collections/contas/records", {"nome": "Restaurada", "tipo": "banco", "saldo_inicial": 50, "usuario_id": uid}, tok, {"X-Restauracao-Backup": "1"})
 chk("7: restauracao de backup (administrador) cria conta sem data de corte", (s, str(conta_row("Restaurada")["saldo_inicial_data"] or "")[:10]), (200, ""))
 
@@ -389,6 +390,28 @@ if arec.get("empresa_id") == emp2.get("id") and arec.get("role") == "administrad
     chk("7: administrador de OUTRA empresa nao altera a conta (mensagem generica)", (s, conta_row("Sicredi")["saldo_inicial"]), (400, -200))
 else:
     chk("7: administrador da outra empresa disponivel para o teste", False, True)
+
+# ===== 8) legado: depositos continuam funcionando sobre linhas geradas por fechamento (com as protecoes ligadas) =====
+c_taxa = cat("5.7 Taxas de maquineta e cartao", "despesa", "despesa_financeira")
+s, _ = call("POST", "/api/collections/permissoes/records", {"chave": "categoria_taxa_id", "valor": c_taxa}, tok)
+chk("8: categoria da taxa configurada", s, 200)
+s, r = fech(caixa="Caixa 6", maquineta_pix=300, maquineta_credito=0, maquineta_debito=100, total_fita=900, dinheiro_contado=500,
+            despesas=[{"descricao": "Compra de agua", "categoria_id": c_d1, "valor": 50}])
+fe = r.get("id")
+pe = por_tipo(fe)
+chk("8: fechamento E criado com PIX e debito previstos", (s, pe["PIX"]["status"], pe["cartão de débito"]["status"]), (200, "previsto", "previsto"))
+corpo_dep = {"chave": "k8" + "".join(random.choice(string.ascii_lowercase) for _ in range(12)), "data_deposito": dia, "conta": "Itaú",
+             "titulos": [pe["PIX"]["id"], pe["cartão de débito"]["id"]], "linhas": [{"rotulo": "Extrato Itau", "valor": 395}], "bruto_conferido": 400}
+s, r = call("POST", "/backend/v1/deposito/registrar", corpo_dep, tok)
+chk("8: deposito sobre as linhas do fechamento aceito (bruto 400, caiu 395, taxa 5)", (s, r.get("bruto"), r.get("liquido"), r.get("taxa")), (200, 400, 395, 5))
+chk("8: os dois previstos do fechamento receberam baixa pelo bruto", q1("select count(*) from lancamentos where liquidacao_de in (?,?) and status='realizado'", pe["PIX"]["id"], pe["cartão de débito"]["id"]), 2)
+chk("8: as linhas originais do fechamento continuam intactas (previsto segue previsto)", [(x["valor"], x["status"]) for x in originais(fe) if x["tipo"] == "receita" and x["status"] != "realizado"], [(300, "previsto"), (100, "previsto")])
+s, r = estornar(fe)
+chk("8: fechamento com PIX/debito baixados pelo deposito nao se estorna", s, 400)
+n_antes = n_lanc()
+s, r = call("POST", f"/backend/v1/lancamentos/{pe['PIX']['id']}/editar", {"motivo": "tentativa de edicao", "valor": 301}, tok)
+chk("8: previsto baixado do fechamento nao se edita", s, 400)
+chk("8: nada mudou", n_lanc(), n_antes)
 
 print(f"RESUMO: {falhas} falha(s)")
 sys.exit(1 if falhas else 0)

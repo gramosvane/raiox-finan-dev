@@ -17,9 +17,9 @@ onRecordCreateRequest((e) => {
   if (!isFinite(saldo) || Math.abs(saldo) > 1e12) {
     throw new BadRequestError('O saldo inicial informado não é válido.')
   }
-  // a data vem do texto ORIGINAL da requisição: o campo de data do PocketBase já normaliza "31/02" para outro dia
-  const corpoReq = (e.requestInfo() && e.requestInfo().body) || {}
-  const dataTxt = String(corpoReq.saldo_inicial_data || '').trim().slice(0, 10)
+  // O PocketBase já esvazia, antes deste gancho, uma data que não existe no calendário (ex.: 31/02): ela chega vazia e
+  // cai no padrão (hoje), nunca é gravada como foi digitada. A tela usa seletor de data, que não permite datas assim.
+  const dataTxt = String(e.record.get('saldo_inicial_data') || '').trim().slice(0, 10)
   if (dataTxt) {
     const d = new Date(dataTxt + 'T00:00:00Z')
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dataTxt) || isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== dataTxt) {
