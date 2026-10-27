@@ -35,6 +35,7 @@ import {
   resolverGrupoDRE,
   calcularValorEfetivoLancamento,
   filtrarLancamentosAbertos,
+  resumoCompetencia,
 } from '@/lib/financialCalculations'
 import {
   montarLinhasDRECompleto,
@@ -185,31 +186,37 @@ export const RelatoriosPage: React.FC = () => {
       'Dez',
     ]
 
+    // Mesmo critério da DRE (competência; inclui previstos; ignora transferência e retirada de sócio)
     return meses.map((m, idx) => {
       const compTarget = `${anoCompetencia}-${m}`
-      const lancsMes = todosLancamentos.filter(
-        (l) => l.competencia === compTarget && l.status === 'realizado',
-      )
-
-      const rec = lancsMes
-        .filter((l) => l.tipo === 'receita')
-        .reduce((a, b) => roundCents(a + calcularValorEfetivoLancamento(b)), 0)
-      const desp = lancsMes
-        .filter((l) => l.tipo === 'despesa')
-        .reduce((a, b) => roundCents(a + calcularValorEfetivoLancamento(b)), 0)
-      const lucro = roundCents(rec - desp)
-      const margem = rec > 0 ? (lucro / rec) * 100 : 0
+      const lancsMes = todosLancamentos
+        .filter((l) => l.competencia === compTarget)
+        .map((l) => ({
+          ...l,
+          grupo_dre: resolverGrupoDRE(
+            {
+              tipo: l.tipo,
+              categoria: l.categoria,
+              categoria_id: l.categoria_id,
+              grupo_dre: l.expand?.categoria_id?.grupo_dre,
+            },
+            categorias,
+          ),
+        }))
+      const r = resumoCompetencia(lancsMes)
+      const margem = r.receitas > 0 ? (r.lucro / r.receitas) * 100 : 0
 
       return {
         mes: nomesMeses[idx],
         competencia: compTarget,
-        receitas: rec,
-        despesas: desp,
-        lucro,
+        faturamento: r.faturamento,
+        receitas: r.receitas,
+        despesas: r.despesas,
+        lucro: r.lucro,
         margem,
       }
     })
-  }, [todosLancamentos, anoCompetencia])
+  }, [todosLancamentos, anoCompetencia, categorias])
 
   // EXPORTAR CSV COMPATÍVEL COM EXCEL
   const exportarCSV = (nomeArquivo: string, linhas: Array<string[]>) => {
@@ -590,7 +597,8 @@ export const RelatoriosPage: React.FC = () => {
                 Evolução Mensal do Lucro Líquido e Margem
               </h2>
               <p className="text-xs text-slate-500 font-normal mt-0.5">
-                Distribuição dos resultados ao longo dos 12 meses de {anoCompetencia}
+                Distribuição dos resultados ao longo dos 12 meses de {anoCompetencia}, por competência (mesmo critério da
+                DRE: inclui previstos; não inclui transferência entre contas nem retirada de sócio).
               </p>
             </div>
 
@@ -644,7 +652,8 @@ export const RelatoriosPage: React.FC = () => {
                 Faturamento Bruto Acumulado ({anoCompetencia})
               </h2>
               <p className="text-xs text-slate-500 font-normal mt-0.5">
-                Curva de crescimento de receitas brutas da empresa
+                Receita bruta por competência, como na DRE: inclui o que ainda vai ser recebido (ex.: cartão ainda
+                não depositado) e não inclui transferência entre contas nem retirada de sócio.
               </p>
             </div>
 
@@ -652,7 +661,7 @@ export const RelatoriosPage: React.FC = () => {
               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/80 shadow-xs">
                 <span className="text-xs text-slate-500 font-normal">Total Faturado no Ano</span>
                 <p className="text-2xl lg:text-[26px] font-semibold text-emerald-600 tabular-nums mt-1.5">
-                  {formatBRL(evolucaoMensal.reduce((a, b) => a + b.receitas, 0))}
+                  {formatBRL(evolucaoMensal.reduce((a, b) => roundCents(a + b.faturamento), 0))}
                 </p>
               </div>
 
@@ -661,7 +670,7 @@ export const RelatoriosPage: React.FC = () => {
                   Média Mensal de Faturamento
                 </span>
                 <p className="text-2xl lg:text-[26px] font-semibold text-slate-900 tabular-nums mt-1.5">
-                  {formatBRL(evolucaoMensal.reduce((a, b) => a + b.receitas, 0) / 12)}
+                  {formatBRL(evolucaoMensal.reduce((a, b) => roundCents(a + b.faturamento), 0) / 12)}
                 </p>
               </div>
             </div>

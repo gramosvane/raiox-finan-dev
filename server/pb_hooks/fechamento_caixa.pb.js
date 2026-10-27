@@ -35,6 +35,16 @@ onRecordCreateRequest((e) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataTxt)) {
     throw new BadRequestError('Informe a data do fechamento.')
   }
+  // data de calendário válida (nada de 31/02) e nunca no futuro (dia de hoje no calendário de Brasília, UTC-3):
+  // as vendas de um fechamento já aconteceram e o dinheiro do caixa nasce realizado nesse dia
+  const dataCivil = new Date(dataTxt + 'T00:00:00Z')
+  if (isNaN(dataCivil.getTime()) || dataCivil.toISOString().slice(0, 10) !== dataTxt) {
+    throw new BadRequestError('A data do fechamento não existe no calendário.')
+  }
+  const hojeBrasilia = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10)
+  if (dataTxt > hojeBrasilia) {
+    throw new BadRequestError('A data do fechamento não pode ser futura. Informe o dia em que as vendas aconteceram.')
+  }
 
   const campos = [
     'maquineta_pix',

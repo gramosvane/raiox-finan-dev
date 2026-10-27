@@ -77,6 +77,7 @@ export interface Conta {
   nome: string
   tipo: TipoConta
   saldo_inicial: number
+  saldo_inicial_data?: string | null
   empresa_id?: string | null
   usuario_id: string
   created: string

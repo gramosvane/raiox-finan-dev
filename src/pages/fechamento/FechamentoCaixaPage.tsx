@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getCategorias } from '@/services/financial'
 import { SeletorContaBaixa } from '@/components/SeletorContaBaixa'
 import { parseValorBR, valorPositivoBR, valorDigitadoInvalido, valorDigitadoIlegivel } from '@/lib/numeroBR'
+import { hojeBrasil } from '@/lib/dataCivil'
 import type { Categoria } from '@/types/financial'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -298,6 +299,7 @@ export const FechamentoCaixaPage: React.FC = () => {
     e.preventDefault()
     setErro('')
     if (!data) return setErro('Informe a data do fechamento.')
+    if (data > hojeBrasil()) return setErro('A data do fechamento não pode ser futura. Informe o dia em que as vendas aconteceram.')
     if (fita.trim() === '') return setErro('Informe o valor (total bruto da fita).')
     if (!caixa.trim()) return setErro('Informe o caixa.')
     if (!numeroFita.trim()) return setErro('Informe o número da fita.')
@@ -367,11 +369,14 @@ export const FechamentoCaixaPage: React.FC = () => {
     if (motivo.trim().length < 5) return setEstornoErro('Informe o motivo (mínimo 5 letras).')
     setProcessandoEstorno(true)
     try {
-      await pb.send('/backend/v1/fechamento/estornar', {
+      const r: any = await pb.send('/backend/v1/fechamento/estornar', {
         method: 'POST',
         body: { id: estornando.id, motivo: motivo.trim() },
       })
-      toast({ title: 'Fechamento estornado' })
+      toast({
+        title: 'Fechamento estornado',
+        description: r?.ja_estornados > 0 ? r.message : undefined,
+      })
       setEstornando(null)
       setMotivo('')
       await carregar()
@@ -423,6 +428,7 @@ export const FechamentoCaixaPage: React.FC = () => {
                   <Input
                     id="fc-data"
                     type="date"
+                    max={hojeBrasil()}
                     value={data}
                     onChange={(e) => setData(e.target.value)}
                   />
@@ -499,6 +505,10 @@ export const FechamentoCaixaPage: React.FC = () => {
                     value={credito}
                     onChange={(e) => setCredito(e.target.value)}
                   />
+                  <p className="text-[11px] text-slate-500 max-w-[14rem]">
+                    Vira um único recebível (vence em {prazos.prazo_credito} dias). Venda parcelada: lance cada parcela em
+                    Lançamentos.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="fc-deb">Cartão de débito (R$)</Label>

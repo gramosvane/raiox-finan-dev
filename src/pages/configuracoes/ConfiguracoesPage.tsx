@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/contexts/AuthContext'
+import { hojeBrasil, formatarDataCivil } from '@/lib/dataCivil'
+import { AlterarSaldoInicialDialog } from '@/components/AlterarSaldoInicialDialog'
 import {
   getContas,
   createConta,
@@ -132,6 +134,8 @@ export const ConfiguracoesPage: React.FC = () => {
   const [novaContaNome, setNovaContaNome] = useState('')
   const [novaContaTipo, setNovaContaTipo] = useState<'caixa' | 'banco' | 'cartao'>('banco')
   const [novaContaSaldo, setNovaContaSaldo] = useState('0')
+  const [novaContaData, setNovaContaData] = useState(hojeBrasil())
+  const [contaSaldoEditando, setContaSaldoEditando] = useState<Conta | null>(null)
 
   // CRUD CATEGORIAS
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -361,9 +365,11 @@ export const ConfiguracoesPage: React.FC = () => {
         nome: novaContaNome.trim(),
         tipo: novaContaTipo,
         saldo_inicial: parseFloat(novaContaSaldo) || 0,
+        saldo_inicial_data: novaContaData || hojeBrasil(),
       })
       setNovaContaNome('')
       setNovaContaSaldo('0')
+      setNovaContaData(hojeBrasil())
       carregarTudo()
       toast({ title: 'Conta criada com sucesso.' })
     } catch (err: any) {
@@ -936,7 +942,7 @@ export const ConfiguracoesPage: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <form onSubmit={handleCriarConta}>
-                  <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <CardContent className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     <div>
                       <Label className="text-xs font-medium text-slate-600 mb-1 block">
                         Nome da Conta
@@ -973,6 +979,18 @@ export const ConfiguracoesPage: React.FC = () => {
                         className="bg-slate-50 border-slate-200 text-xs text-slate-900 rounded-xl"
                       />
                     </div>
+                    <div>
+                      <Label className="text-xs font-medium text-slate-600 mb-1 block">
+                        Data do saldo inicial
+                      </Label>
+                      <Input
+                        type="date"
+                        max={hojeBrasil()}
+                        value={novaContaData}
+                        onChange={(e) => setNovaContaData(e.target.value)}
+                        className="bg-slate-50 border-slate-200 text-xs text-slate-900 rounded-xl"
+                      />
+                    </div>
                   </CardContent>
                   <CardFooter>
                     <Button
@@ -998,8 +1016,21 @@ export const ConfiguracoesPage: React.FC = () => {
                         <p className="font-medium text-slate-900">{c.nome}</p>
                         <p className="text-slate-500 capitalize font-normal">
                           Tipo: {c.tipo} | Saldo Inicial: {formatBRL(c.saldo_inicial)}
+                          {c.saldo_inicial_data
+                            ? ` (corte em ${formatarDataCivil(c.saldo_inicial_data.slice(0, 10))})`
+                            : ' (data de corte não registrada)'}
                         </p>
                       </div>
+                      {user?.role === 'administrador' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setContaSaldoEditando(c)}
+                          className="text-xs h-7 rounded-lg mr-2"
+                        >
+                          Alterar saldo inicial
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1012,6 +1043,11 @@ export const ConfiguracoesPage: React.FC = () => {
                   ))}
                 </div>
               </div>
+              <AlterarSaldoInicialDialog
+                conta={contaSaldoEditando}
+                onFechar={() => setContaSaldoEditando(null)}
+                onAlterado={() => carregarTudo()}
+              />
             </div>
           )}
 

@@ -6,6 +6,8 @@
 // marca o fechamento como estornado (a fita pode então ser registrada de novo).
 // Se QUALQUER lançamento do fechamento já tiver baixa (PIX/cartão recebido), NADA é feito: o sistema não permite
 // estornar uma baixa, então a correção nesse caso é um lançamento de ajuste.
+// Linha que JÁ tem contra-lançamento (estorno feito à mão antes da proteção das linhas de fechamento) não é estornada
+// de novo: é contada em "ja_estornados" e o resto do fechamento é estornado normalmente (nunca estorno em dobro).
 // Só o administrador estorna (validado aqui, no servidor).
 routerAdd('POST', '/backend/v1/fechamento/estornar', (e) => {
   if (!e.auth || e.auth.collection().name !== 'users') {
@@ -57,8 +59,15 @@ routerAdd('POST', '/backend/v1/fechamento/estornar', (e) => {
 
       let estornosRealizados = 0
       let previstosCancelados = 0
+      let jaEstornados = 0
       for (const o of originais) {
         if (o.getString('status') === 'realizado') {
+          // nunca estorna em dobro: se a linha já tem contra-lançamento, só registra no resumo
+          const jaTem = txApp.findRecordsByFilter('lancamentos', 'estorno_de = {:i}', '', 1, 0, { i: o.id }) || []
+          if (jaTem.length > 0) {
+            jaEstornados++
+            continue
+          }
           const x = new Record(colLanc)
           x.set('tipo', o.getString('tipo'))
           x.set('descricao', '[ESTORNO] ' + o.getString('descricao') + ' - Ref: ' + o.id + ' (' + motivo + ')')
@@ -97,9 +106,14 @@ routerAdd('POST', '/backend/v1/fechamento/estornar', (e) => {
         'Fechamento de caixa ' + fech.getString('caixa') + ' nº ' + fech.getString('numero_fita') + ' estornado. Motivo: ' + motivo,
       )
       audit.set('referencia_id', id)
-      audit.set('detalhes', { motivo: motivo, estornos: estornosRealizados, previstos_cancelados: previstosCancelados })
+      audit.set('detalhes', {
+        motivo: motivo,
+        estornos: estornosRealizados,
+        previstos_cancelados: previstosCancelados,
+        ja_estornados: jaEstornados,
+      })
       txApp.save(audit)
-      resumo = { estornos: estornosRealizados, previstos_cancelados: previstosCancelados }
+      resumo = { estornos: estornosRealizados, previstos_cancelados: previstosCancelados, ja_estornados: jaEstornados }
     })
   } catch (err) {
     const msg = err && err.message ? String(err.message) : ''
@@ -110,5 +124,9 @@ routerAdd('POST', '/backend/v1/fechamento/estornar', (e) => {
       message: conhecida ? msg : 'Não foi possível estornar o fechamento. Nada foi alterado.',
     })
   }
-  return e.json(200, { success: true, message: 'Fechamento estornado.', ...resumo })
+  const aviso =
+    resumo && resumo.ja_estornados > 0
+      ? ' ' + resumo.ja_estornados + ' linha(s) já tinham sido estornadas antes e não foram estornadas de novo.'
+      : ''
+  return e.json(200, { success: true, message: 'Fechamento estornado.' + aviso, ...resumo })
 })

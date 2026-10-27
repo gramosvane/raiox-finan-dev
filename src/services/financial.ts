@@ -164,6 +164,7 @@ export async function createConta(data: {
   nome: string
   tipo: 'caixa' | 'banco' | 'cartao'
   saldo_inicial: number
+  saldo_inicial_data?: string
   empresa_id?: string | null
 }): Promise<Conta> {
   const currentUserId = pb.authStore.model?.id

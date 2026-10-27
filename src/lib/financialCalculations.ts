@@ -383,6 +383,60 @@ export function calcularDRE(
 }
 
 /**
+ * Receitas e despesas de UM conjunto de lançamentos (normalmente um mês de competência) com o MESMO critério da DRE:
+ * inclui previstos e realizados, tira estornados e previstos já baixados, abate estornos e IGNORA o que está fora do
+ * resultado (transferência entre contas e retirada de sócio). O faturamento é a receita bruta da DRE (sem receita
+ * financeira). Usada pelos relatórios "Evolução mensal" e "Faturamento", para que batam com a DRE.
+ */
+export interface ResumoCompetencia {
+  faturamento: number
+  receitas: number
+  despesas: number
+  lucro: number
+}
+
+export function resumoCompetencia(lancamentos: LancamentoCalculo[]): ResumoCompetencia {
+  const dre = calcularDRE(lancamentos, 'competencia', 0)
+  const faturamento = dre.receitaBruta
+  const receitas = roundCents(dre.receitaBruta + dre.rendimentosFinanceiros)
+  const despesas = roundCents(
+    dre.impostosDeducoes +
+      dre.custosFornecedores +
+      dre.totalDespesasFixas +
+      dre.despesasFinanceiras +
+      dre.investimentos,
+  )
+  return { faturamento, receitas, despesas, lucro: roundCents(receitas - despesas) }
+}
+
+/**
+ * Fluxo de caixa de um mês (AAAA-MM) pela DATA EM QUE O DINHEIRO ENTROU OU SAIU (data_realizacao), só realizados.
+ * Estornos valem negativo. Inclui retirada de sócio e as duas pontas de uma transferência (que se anulam no total).
+ * Diferente do resultado por competência: um cartão vendido em outubro e depositado em novembro entra em novembro.
+ */
+export function fluxoCaixaDoMes(
+  lancamentos: Array<{
+    tipo: 'receita' | 'despesa'
+    status: string
+    valor: number
+    data_realizacao?: string | null
+    estorno_de?: string | null
+  }>,
+  mes: string,
+): { entradas: number; saidas: number; saldo: number } {
+  let entradas = 0
+  let saidas = 0
+  for (const l of lancamentos) {
+    if (l.status !== 'realizado') continue
+    if (String(l.data_realizacao || '').slice(0, 7) !== mes) continue
+    const v = calcularValorEfetivoLancamento(l)
+    if (l.tipo === 'receita') entradas = roundCents(entradas + v)
+    else if (l.tipo === 'despesa') saidas = roundCents(saidas + v)
+  }
+  return { entradas, saidas, saldo: roundCents(entradas - saidas) }
+}
+
+/**
  * Calcula o ROI (Return on Investment) com validações e arredondamento.
  */
 export function calcularROI(

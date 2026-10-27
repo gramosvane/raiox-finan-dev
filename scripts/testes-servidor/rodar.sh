@@ -1,6 +1,6 @@
 #!/bin/bash
 # Testes de SERVIDOR do e-Audit (regressão de qualquer versão).
-# Sobe instâncias ISOLADAS e VAZIAS do PocketBase (pastas temporárias, portas 18137 a 18140), roda cada bateria e
+# Sobe instâncias ISOLADAS e VAZIAS do PocketBase (pastas temporárias, portas 18137 a 18141), roda cada bateria e
 # apaga as pastas temporárias. NÃO toca em nenhum banco real. Pré-requisito: o código instalado (node, npm ci e
 # scripts/setup-local.sh já rodados: existem ./pocketbase e ./dist) e python3.
 # Uso, na raiz do repositório:  bash scripts/testes-servidor/rodar.sh
@@ -42,6 +42,7 @@ rodar() { # $1=nome  $2=script  $3=porta  $4=modo (api = script recebe URL e pas
 rodar "Contas, baixas e restauração de backup" t_contas.py 18138 api
 rodar "Fechamento de caixa (geração, estorno, concorrência, cargos)" t_gerar.py 18139 api
 rodar "Depósito conferido (baixa pelo bruto, taxa, concorrência, correção)" t_deposito.py 18140 api super
+rodar "Integridade do fechamento e do saldo inicial (linhas protegidas, estorno sem dobro, data futura, auditoria)" t_integridade.py 18141 api super
 rodar "Homologação oficial (cargos, isolamento entre empresas, segurança)" homolog_oficial.py 18137 homolog
 echo
 if [ "$TOTAL_FALHAS" -eq 0 ]; then echo "[OK] Todas as baterias de servidor passaram."; else echo "[ERRO] $TOTAL_FALHAS falha(s). Não promova esta versão."; exit 1; fi

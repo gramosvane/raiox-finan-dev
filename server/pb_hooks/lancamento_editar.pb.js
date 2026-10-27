@@ -144,6 +144,16 @@ routerAdd(
       })
     }
 
+    // Linha gerada por um fechamento de caixa: só muda estornando o FECHAMENTO (o gancho fechamento_protege_linhas também
+    // barra o salvamento; esta checagem devolve a mensagem clara em vez de erro 500). Também depois das checagens de dono e empresa.
+    if (lancRecord.getString('fechamento_id')) {
+      return e.json(400, {
+        success: false,
+        message:
+          'Operação negada: esta linha foi gerada por um fechamento de caixa e não pode ser editada. Para corrigir, estorne o fechamento (tela Fechamento de caixa) e registre a fita de novo.',
+      })
+    }
+
     // Troca de empresa: somente para a empresa do usuário ou uma empresa criada por ele; nunca para vazio
     if (body.empresa_id !== undefined && String(body.empresa_id || '') !== lancEmpresa) {
       const novaEmp = String(body.empresa_id || '')

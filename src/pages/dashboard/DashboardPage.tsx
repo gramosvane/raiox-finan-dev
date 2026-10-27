@@ -54,6 +54,7 @@ import {
   resolverGrupoDRE,
   obterNomeAtualCategoria,
   calcularValorEfetivoLancamento,
+  fluxoCaixaDoMes,
   roundCents,
 } from '@/lib/financialCalculations'
 import { gerarTextoInformativoPrevistosDRE } from '@/lib/apresentacaoLancamentos'
@@ -403,19 +404,11 @@ export const DashboardPage: React.FC = () => {
     saldoInicialContas + somaReceitasRealizadasHistorico - somaDespesasRealizadasHistorico,
   )
 
-  // - Lançamentos da Competência Atual
-  const lancsDoMes = lancamentosFiltradosEmpresa.filter((l) => l.competencia === competencia)
-  const lancsDoMesRealizados = lancsDoMes.filter((l) => l.status === 'realizado')
-
-  const receitasDoMes = lancsDoMesRealizados
-    .filter((l) => l.tipo === 'receita')
-    .reduce((acc, l) => roundCents(acc + calcularValorEfetivoLancamento(l)), 0)
-
-  const despesasDoMes = lancsDoMesRealizados
-    .filter((l) => l.tipo === 'despesa')
-    .reduce((acc, l) => roundCents(acc + calcularValorEfetivoLancamento(l)), 0)
-
-  const resultadoDoMes = roundCents(receitasDoMes - despesasDoMes)
+  // - Fluxo de caixa do mês: entradas menos saídas REALIZADAS pela data em que o dinheiro entrou ou saiu
+  //   (data de realização), e não pela competência da venda: um cartão vendido em outubro e depositado em
+  //   novembro entra no fluxo de novembro.
+  const fluxoMes = fluxoCaixaDoMes(lancamentosFiltradosEmpresa, competencia)
+  const resultadoDoMes = fluxoMes.saldo
 
   // Lançamentos efetivamente abertos (protegidos contra itens que já possuem liquidação registrada)
   const despesasAbertas = useMemo(() => {
@@ -478,8 +471,9 @@ export const DashboardPage: React.FC = () => {
       }
     })
 
-    const seriesResultado = mesesChaves.map((k) =>
-      roundCents(mesesMap[k].receitas - mesesMap[k].despesas),
+    // o resultado do cartão "Fluxo de caixa do mês" usa a data de realização (mesma regra do valor do cartão)
+    const seriesResultado = mesesChaves.map(
+      (k) => fluxoCaixaDoMes(lancamentosFiltradosEmpresa, k).saldo,
     )
     const seriesReceita = mesesChaves.map((k) => mesesMap[k].receitas)
     const seriesDespesa = mesesChaves.map((k) => mesesMap[k].despesas)
@@ -859,7 +853,7 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-normal">
-              <span>Entradas menos saídas realizadas (inclui investimentos)</span>
+              <span>Entradas menos saídas, pela data em que o dinheiro entrou ou saiu (inclui investimentos e retiradas)</span>
               <MiniSparkline
                 data={sparklineData.seriesResultado}
                 color={resultadoDoMes >= 0 ? 'green' : 'red'}
