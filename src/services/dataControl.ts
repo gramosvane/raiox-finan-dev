@@ -611,7 +611,7 @@ export async function restaurarBackup(
         saldo_inicial: Number(c.saldo_inicial || 0),
         usuario_id: currentUserId,
         empresa_id: novaEmpresaId,
-      })
+      }, { headers: { 'X-Restauracao-Backup': '1' } }) // o servidor só honra o cabeçalho para administrador: a conta restaurada fica sem data de corte
       existingContaKeys.add(key)
       result.importados.contas++
     } catch (e: any) {

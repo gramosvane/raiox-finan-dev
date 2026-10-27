@@ -203,8 +203,8 @@ export const RelatoriosPage: React.FC = () => {
             categorias,
           ),
         }))
-      const r = resumoCompetencia(lancsMes)
-      const margem = r.receitas > 0 ? (r.lucro / r.receitas) * 100 : 0
+      const r = resumoCompetencia(lancsMes, depreciacaoDoMes(bensDepreciacao, compTarget))
+      const margem = r.margem
 
       return {
         mes: nomesMeses[idx],
@@ -216,7 +216,7 @@ export const RelatoriosPage: React.FC = () => {
         margem,
       }
     })
-  }, [todosLancamentos, anoCompetencia, categorias])
+  }, [todosLancamentos, anoCompetencia, categorias, bensDepreciacao])
 
   // EXPORTAR CSV COMPATÍVEL COM EXCEL
   const exportarCSV = (nomeArquivo: string, linhas: Array<string[]>) => {
@@ -597,8 +597,9 @@ export const RelatoriosPage: React.FC = () => {
                 Evolução Mensal do Lucro Líquido e Margem
               </h2>
               <p className="text-xs text-slate-500 font-normal mt-0.5">
-                Distribuição dos resultados ao longo dos 12 meses de {anoCompetencia}, por competência (mesmo critério da
-                DRE: inclui previstos; não inclui transferência entre contas nem retirada de sócio).
+                Distribuição dos resultados ao longo dos 12 meses de {anoCompetencia}, por competência, com os mesmos números
+                da DRE: lucro = resultado líquido, margem líquida; inclui previstos; não inclui transferência entre contas,
+                retirada de sócio nem investimentos (CAPEX).
               </p>
             </div>
 
@@ -653,7 +654,8 @@ export const RelatoriosPage: React.FC = () => {
               </h2>
               <p className="text-xs text-slate-500 font-normal mt-0.5">
                 Receita bruta por competência, como na DRE: inclui o que ainda vai ser recebido (ex.: cartão ainda
-                não depositado) e não inclui transferência entre contas nem retirada de sócio.
+                não depositado) e lançamentos previstos de meses futuros (ex.: recorrências geradas); não inclui
+                transferência entre contas nem retirada de sócio. A média divide o total do ano por 12 meses.
               </p>
             </div>
 

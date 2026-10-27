@@ -53,7 +53,8 @@ porque o problema é de composição; em (c) a ferramenta correta está a caminh
 ## PIX: como baixar enquanto ele ainda nasce como "a receber" (rotina PROVISÓRIA)
 O PIX cai no banco na hora e sem taxa, mas o fechamento ainda o grava como "a receber" (sem conta). Até o PIX nascer direto no banco (próximas versões), baixe-o **uma vez por dia**,
 na manhã seguinte, assim:
-1. **Confira a fita** do fechamento e o **extrato do banco onde o PIX entrou** (o total do dia e a data real do crédito).
+1. **Confira a fita INTEIRA** (dinheiro, despesas do caixa, débito e crédito, não só o PIX) e o **extrato do banco onde o PIX entrou** (o total do dia e a data real do crédito).
+   **Depois que o PIX for baixado, a fita não tem mais correção**: o sistema não estorna fechamento com baixa e as linhas do fechamento não se editam nem se estornam à mão; qualquer erro vira lançamento de ajuste definido com o contador.
 2. Em Contas a Receber → Depósitos da maquineta → Registrar depósito: marque **só os PIX daquele dia** (um dia por vez; nunca misture PIX com débito ou crédito).
 3. Digite **uma linha** com a **soma do extrato** e a **data real** em que caiu; escolha o **banco em que entrou**. A taxa tem que dar **zero**: se aparecer taxa, a seleção ou o valor está errado, não confirme.
 4. Confirme e verifique que o "A receber" de PIX **diminuiu pelo valor certo** e que o movimento foi registrado **uma única vez**.

@@ -53,7 +53,7 @@ def n_lanc():
     return q1("select count(*) from lancamentos")
 
 
-hoje = datetime.date.today()
+hoje = (datetime.datetime.utcnow() - datetime.timedelta(hours=3)).date()
 dia = hoje.isoformat()
 ontem = (hoje - datetime.timedelta(days=1)).isoformat()
 amanha = (hoje + datetime.timedelta(days=1)).isoformat()
@@ -158,6 +158,16 @@ s, r = call("PATCH", f"/api/collections/lancamentos/records/{pix_a['id']}", {"st
 chk("1d: superusuario NAO cancela previsto de fechamento por fora da rota de estorno", s, 400)
 s, r = call("PATCH", f"/api/collections/lancamentos/records/{din_a['id']}", {"fechamento_id": ""}, stok)
 chk("1d2: nem limpando o vinculo com o fechamento", s, 400)
+
+# o vinculo com o fechamento e definido SO pelo servidor: lancamento criado a mao com fechamento_id e recusado
+forja = {"tipo": "despesa", "descricao": "Despesa com vinculo forjado", "categoria": "4.4 Agua, energia, telefone e internet", "categoria_id": c_d1, "valor": 12, "competencia": comp, "data_lancamento": dia, "data_realizacao": dia, "status": "realizado", "conta": "Cofre", "fechamento_id": fa, "empresa_id": eid, "usuario_id": uid}
+n0 = n_lanc()
+s, r = call("POST", "/api/collections/lancamentos/records", forja, tok)
+chk("1d3: criar lancamento com fechamento_id forjado recusado (usuario)", s, 400)
+chk("1d3: a mensagem diz que o vinculo e so do servidor", "só pelo servidor" in str(r.get("message")), True)
+s, r = call("POST", "/api/collections/lancamentos/records", dict(forja, fechamento_id="idinventado0001"), stok)
+chk("1d4: nem o superusuario cria lancamento com fechamento_id", s, 400)
+chk("1d3: nada gravado", n_lanc(), n0)
 
 # controle: lancamento comum continua editavel e estornavel
 s, comum = call("POST", "/api/collections/lancamentos/records", {"tipo": "receita", "descricao": "Receita comum", "categoria": "1.1 Mensalidades de planos", "categoria_id": c_rec, "valor": 80, "competencia": comp, "data_lancamento": dia, "data_realizacao": dia, "status": "realizado", "conta": "Itaú", "empresa_id": eid, "usuario_id": uid}, tok)
@@ -291,6 +301,22 @@ s, r = call("POST", "/api/collections/lancamentos/records", dict(base, data_real
 chk("6: controle: realizado com data passada pelo mesmo caminho aceito", s, 200)
 s, r2 = call("POST", "/api/collections/lancamentos/records", dict(base, status="previsto", data_realizacao="", data_vencimento=amanha, conta=""), stok)
 chk("6: controle: PREVISTO com vencimento futuro aceito", s, 200)
+s, r3 = call("POST", "/api/collections/lancamentos/records", dict(base, descricao="Realizado para o teste de atualizacao", data_realizacao=ontem), stok)
+rid = r3.get("id")
+s, r = call("PATCH", f"/api/collections/lancamentos/records/{rid}", {"data_realizacao": amanha}, stok)
+chk("6: ATUALIZAR um realizado para data futura (rota interna) recusado pelo gancho de modelo", s, 400)
+s, r = call("PATCH", f"/api/collections/lancamentos/records/{rid}", {"observacoes": "controle sem mexer na data"}, stok)
+chk("6: controle: atualizar sem mexer na data continua funcionando", s, 200)
+
+# fechamento em modo conferencia (sem categoria): campos reservados do cliente sao descartados (sem 'fechamento fantasma')
+conf = {"data": dia, "total_fita": 0, "dinheiro_contado": 10, "maquineta_pix": 0, "maquineta_credito": 0, "maquineta_debito": 0, "caixa": "Caixa 9", "numero_fita": "9999", "estornado": True, "conta": "Cofre"}
+conf.pop("total_fita")
+s, r = call("POST", "/api/collections/fechamentos_caixa/records", conf, tok)
+chk("6: modo conferencia (sem categoria) aceito", s, 200)
+fx = db().execute("select caixa, numero_fita, estornado, conta, categoria_id from fechamentos_caixa where id=?", (r.get("id"),)).fetchone() if r.get("id") else None
+chk("6: caixa, fita, conta, categoria e estorno do cliente foram descartados", (fx[0], fx[1], fx[2], fx[3], fx[4]) if fx else None, ("", "", 0, "", ""))
+s, r = fech(caixa="Caixa 9", numero_fita="9999")
+chk("6: a fita 9999 do Caixa 9 continua livre para o fechamento de verdade", s, 200)
 
 # ===== 7) saldo inicial: data de corte e trilha de auditoria =====
 def conta_row(nome):
@@ -314,6 +340,16 @@ cs = conta_row("Sicredi")
 chk("7: a data de corte assume hoje", str(cs["saldo_inicial_data"])[:10], dia)
 au = audits_conta(cs["id"])
 chk("7: a criacao com saldo diferente de zero foi auditada", (len(au), au[0][0].get("saldo_novo") if au else None, au[0][0].get("motivo") if au else None), (1, 1000, "Criação da conta"))
+con = db()
+con.execute("CREATE TRIGGER falha_teste_auditoria BEFORE INSERT ON auditoria WHEN NEW.acao = 'saldo_inicial_conta' BEGIN SELECT RAISE(ABORT, 'falha injetada'); END")
+con.commit()
+con.close()
+s, r = call("POST", "/api/collections/contas/records", {"nome": "ComFalhaDeAuditoria", "tipo": "banco", "saldo_inicial": 5, "usuario_id": uid}, tok)
+chk("7: falha na auditoria da CRIACAO: a conta nao fica gravada sem trilha (atomico)", (s != 200, conta_row("ComFalhaDeAuditoria")), (True, None))
+con = db()
+con.execute("DROP TRIGGER falha_teste_auditoria")
+con.commit()
+con.close()
 s, r = call("POST", "/api/collections/contas/records", {"nome": "Bradesco", "tipo": "banco", "saldo_inicial": 0, "usuario_id": uid}, tok)
 chk("7: conta com saldo zero criada", s, 200)
 chk("7: saldo zero nao gera auditoria", len(audits_conta(conta_row("Bradesco")["id"])), 0)

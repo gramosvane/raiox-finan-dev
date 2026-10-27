@@ -45,7 +45,7 @@ onRecordUpdate((e) => {
     !outrosCampos && orig.getString('status') === 'previsto' && e.record.getString('status') === 'estornado'
   if (!soCancelaPrevisto) {
     throw new BadRequestError(
-      'Esta linha foi gerada por um fechamento de caixa e não pode ser editada. Para corrigir, estorne o fechamento (tela Fechamento de caixa) e registre a fita de novo.',
+      'Esta linha foi gerada por um fechamento de caixa e não pode ser editada. Para corrigir, estorne o fechamento (tela Fechamento de caixa) e registre a fita de novo. Se algum PIX ou cartão desse fechamento já foi baixado, o fechamento não pode ser estornado: nesse caso só vale um lançamento de ajuste definido com o contador.',
     )
   }
   return e.next()
@@ -56,13 +56,19 @@ onRecordUpdate((e) => {
 onRecordUpdateRequest((e) => {
   if (e.record.original().getString('fechamento_id')) {
     throw new BadRequestError(
-      'Esta linha foi gerada por um fechamento de caixa e não pode ser editada. Para corrigir, estorne o fechamento (tela Fechamento de caixa) e registre a fita de novo.',
+      'Esta linha foi gerada por um fechamento de caixa e não pode ser editada. Para corrigir, estorne o fechamento (tela Fechamento de caixa) e registre a fita de novo. Se algum PIX ou cartão desse fechamento já foi baixado, o fechamento não pode ser estornado: nesse caso só vale um lançamento de ajuste definido com o contador.',
     )
   }
   return e.next()
 }, 'lancamentos')
 
 onRecordCreateRequest((e) => {
+  // O vínculo com um fechamento é definido SÓ pelo servidor (a rota do fechamento grava por txApp.save e não passa por aqui).
+  // Sem isto, um lançamento criado à mão com um fechamento_id qualquer ficaria "blindado" para sempre ou seria arrastado
+  // para o estorno de um fechamento real.
+  if (e.record.getString('fechamento_id')) {
+    throw new BadRequestError('O vínculo com um fechamento de caixa é definido só pelo servidor.')
+  }
   const alvo = e.record.getString('estorno_de')
   if (!alvo) return e.next()
   let fid = ''
@@ -74,7 +80,7 @@ onRecordCreateRequest((e) => {
   }
   if (fid) {
     throw new BadRequestError(
-      'Esta linha foi gerada por um fechamento de caixa e não pode ser estornada à mão. Para desfazer, estorne o fechamento inteiro (tela Fechamento de caixa).',
+      'Esta linha foi gerada por um fechamento de caixa e não pode ser estornada à mão. Para desfazer, estorne o fechamento inteiro (tela Fechamento de caixa). Se algum PIX ou cartão desse fechamento já foi baixado, o fechamento não pode ser estornado: nesse caso só vale um lançamento de ajuste definido com o contador.',
     )
   }
   return e.next()

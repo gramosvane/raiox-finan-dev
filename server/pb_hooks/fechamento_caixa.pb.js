@@ -109,6 +109,14 @@ onRecordCreateRequest((e) => {
     rec.set('estornado', false)
   }
 
+  if (!gerar) {
+    // modo conferência: caixa, fita, conta, categoria e estorno são campos do servidor; o que o cliente mandar é descartado
+    // (senão um "fechamento fantasma" ocuparia uma fita para sempre e não teria como ser estornado)
+    for (const c of ['caixa', 'numero_fita', 'conta', 'categoria_id', 'estornado_em', 'estornado_por']) rec.set(c, '')
+    rec.set('estornado', false)
+    rec.set('despesas_itens', [])
+  }
+
   const formas = arredonda2(v.maquineta_pix + v.maquineta_credito + v.maquineta_debito)
   if (gerar && formas > fita) {
     throw new BadRequestError('PIX, crédito e débito somam mais que o valor da fita.')

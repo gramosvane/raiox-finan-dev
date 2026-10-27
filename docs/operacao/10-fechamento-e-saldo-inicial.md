@@ -24,14 +24,16 @@ O servidor também recusa, em qualquer rota interna, um lançamento **realizado*
 - Ao **criar** a conta, informe o saldo inicial e a **data do saldo inicial** (padrão: hoje; não pode ser futura). Saldo diferente de zero fica na auditoria.
 - Depois de criada, o saldo inicial **não muda** pela API comum nem por edição: só pela função **Configurações → Contas → Alterar saldo inicial** (só administrador), que exige
   **motivo** e a **data de corte** e grava, junto, a auditoria com valor anterior, valor novo, data anterior, data nova, quem e quando. Se a auditoria falhar, nada é alterado.
-- Contas antigas aparecem como "data de corte não registrada": o Caixa do Painel não muda. A data entra quando o administrador registra o saldo inicial pela função acima
-  (isso será exigido antes do saldo por conta, na próxima etapa).
+- **Atenção: por enquanto a data de corte é só um registro.** O Caixa do Painel continua sendo a soma dos saldos iniciais **mais todos** os lançamentos realizados de qualquer data.
+  Por isso, ao informar um saldo inicial, ele deve ser o **saldo de abertura** (saldo inicial + lançamentos realizados = saldo do extrato), e **não** o saldo do extrato de hoje
+  (que contaria os movimentos já lançados duas vezes). A data de corte passa a valer nos cálculos na etapa do saldo por conta.
+- Contas antigas aparecem como "data de corte não registrada": o Caixa do Painel não muda. A data entra quando o administrador registra o saldo inicial pela função acima.
 
 ## Os números de faturamento: o que cada tela mostra
 | Onde | O que mostra | Critério |
 |---|---|---|
 | Painel → **Fluxo de caixa do mês** | entradas menos saídas realizadas | pela **data em que o dinheiro entrou ou saiu**. Cartão vendido em outubro e depositado em novembro entra em novembro. Inclui retirada de sócio; as duas pontas de uma transferência se anulam |
-| Relatórios → **Evolução mensal** e **Faturamento** | receita bruta, despesas e lucro por mês | **competência**, igual à DRE: inclui o que ainda vai ser recebido (cartão não depositado), tira estornados e previstos já baixados, **não** inclui transferência entre contas nem retirada de sócio |
+| Relatórios → **Evolução mensal** e **Faturamento** | receita bruta, lucro e margem por mês | **competência**, com os números da DRE: lucro = resultado líquido, margem = margem líquida; inclui o que ainda vai ser recebido (cartão não depositado) e previstos de meses futuros (ex.: recorrências geradas), tira estornados e previstos já baixados, **não** inclui transferência entre contas, retirada de sócio nem investimentos (CAPEX). A média do faturamento divide o total do ano por 12 meses |
 | Painel → DRE resumida e Relatórios → DRE | resultado do mês | competência (já era assim) |
 | Contas a Receber | o que falta receber | previstos abertos |
 

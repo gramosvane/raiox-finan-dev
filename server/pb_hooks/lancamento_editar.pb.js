@@ -150,7 +150,7 @@ routerAdd(
       return e.json(400, {
         success: false,
         message:
-          'Operação negada: esta linha foi gerada por um fechamento de caixa e não pode ser editada. Para corrigir, estorne o fechamento (tela Fechamento de caixa) e registre a fita de novo.',
+          'Operação negada: esta linha foi gerada por um fechamento de caixa e não pode ser editada. Para corrigir, estorne o fechamento (tela Fechamento de caixa) e registre a fita de novo. Se algum PIX ou cartão desse fechamento já foi baixado, o fechamento não pode ser estornado: nesse caso só vale um lançamento de ajuste definido com o contador.',
       })
     }
 

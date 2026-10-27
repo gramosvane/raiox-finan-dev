@@ -86,13 +86,6 @@ const PRAZOS_PADRAO = { prazo_pix: 0, prazo_debito: 1, prazo_credito: 31 }
 const brl = (v: number) =>
   (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-const hojeISO = () => {
-  const d = new Date()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${mm}-${dd}`
-}
-
 // Valor digitado no formato brasileiro ("1.234,56", "R$ 120,00"); inválido ou não positivo vira 0 (o envio e o limite avisam).
 const num = valorPositivoBR
 
@@ -102,7 +95,10 @@ const dataBR = (iso: string) => {
 }
 
 const somaDias = (iso: string, dias: number) => {
+  // data vazia ou inválida (campo de data apagado pela metade) não pode derrubar a tela
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ''
   const d = new Date(`${iso}T00:00:00Z`)
+  if (Number.isNaN(d.getTime())) return ''
   d.setUTCDate(d.getUTCDate() + dias)
   return d.toISOString().slice(0, 10)
 }
@@ -117,7 +113,7 @@ export const FechamentoCaixaPage: React.FC = () => {
   const [resultado, setResultado] = useState<Fechamento | null>(null)
 
   const [categorias, setCategorias] = useState<Categoria[]>([])
-  const [data, setData] = useState(hojeISO())
+  const [data, setData] = useState(hojeBrasil())
   const [fita, setFita] = useState('')
   const [caixa, setCaixa] = useState('')
   const [numeroFita, setNumeroFita] = useState('')
@@ -506,8 +502,8 @@ export const FechamentoCaixaPage: React.FC = () => {
                     onChange={(e) => setCredito(e.target.value)}
                   />
                   <p className="text-[11px] text-slate-500 max-w-[14rem]">
-                    Vira um único recebível (vence em {prazos.prazo_credito} dias). Venda parcelada: lance cada parcela em
-                    Lançamentos.
+                    Vira um único recebível (vence em {prazos.prazo_credito} dias). Venda parcelada não entra na fita nem
+                    neste campo: lance cada parcela em Lançamentos.
                   </p>
                 </div>
                 <div className="space-y-1.5">
@@ -615,19 +611,19 @@ export const FechamentoCaixaPage: React.FC = () => {
                     )}
                     {num(pix) > 0 && (
                       <li>
-                        Receita PIX, a receber em {dataBR(somaDias(data, prazos.prazo_pix))}:{' '}
+                        Receita PIX, a receber em {dataBR(somaDias(data, prazos.prazo_pix)) || '(informe a data)'}:{' '}
                         <b>{brl(num(pix))}</b>
                       </li>
                     )}
                     {num(debito) > 0 && (
                       <li>
-                        Receita no débito, a receber em {dataBR(somaDias(data, prazos.prazo_debito))}:{' '}
+                        Receita no débito, a receber em {dataBR(somaDias(data, prazos.prazo_debito)) || '(informe a data)'}:{' '}
                         <b>{brl(num(debito))}</b>
                       </li>
                     )}
                     {num(credito) > 0 && (
                       <li>
-                        Receita no crédito, a receber em {dataBR(somaDias(data, prazos.prazo_credito))}:{' '}
+                        Receita no crédito, a receber em {dataBR(somaDias(data, prazos.prazo_credito)) || '(informe a data)'}:{' '}
                         <b>{brl(num(credito))}</b>
                       </li>
                     )}

@@ -39,7 +39,16 @@ onRecordCreateRequest((e) => {
     }
     if (!restauracao) e.record.set('saldo_inicial_data', hoje)
   }
-  return e.next()
+  // a conta e a auditoria do saldo inicial vão na MESMA transação: se a auditoria falhar, a conta não é criada
+  e.app.runInTransaction((txApp) => {
+    const original = e.app
+    e.app = txApp
+    try {
+      e.next()
+    } finally {
+      e.app = original
+    }
+  })
 }, 'contas')
 
 onRecordCreate((e) => {

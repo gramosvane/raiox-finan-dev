@@ -383,30 +383,39 @@ export function calcularDRE(
 }
 
 /**
- * Receitas e despesas de UM conjunto de lançamentos (normalmente um mês de competência) com o MESMO critério da DRE:
- * inclui previstos e realizados, tira estornados e previstos já baixados, abate estornos e IGNORA o que está fora do
- * resultado (transferência entre contas e retirada de sócio). O faturamento é a receita bruta da DRE (sem receita
- * financeira). Usada pelos relatórios "Evolução mensal" e "Faturamento", para que batam com a DRE.
+ * Resultado de UM conjunto de lançamentos (normalmente um mês de competência) com o MESMO critério e os MESMOS números da
+ * DRE: inclui previstos e realizados, tira estornados e previstos já baixados, abate estornos e IGNORA o que está fora do
+ * resultado (transferência entre contas e retirada de sócio).
+ *  - faturamento = receita bruta da DRE (sem receita financeira);
+ *  - receitas    = receita bruta + rendimentos financeiros;
+ *  - lucro       = Resultado Líquido da DRE (depois de deduções, custos, despesas, financeiras e depreciação);
+ *  - despesas    = receitas - lucro (tudo o que reduziu o resultado; o CAPEX fica FORA, como na DRE, e vem em "investimentos");
+ *  - margem      = margem líquida da DRE (sobre a receita líquida).
+ * Usada pelos relatórios "Evolução mensal" e "Faturamento", para que batam com a DRE.
  */
 export interface ResumoCompetencia {
   faturamento: number
   receitas: number
   despesas: number
   lucro: number
+  margem: number
+  investimentos: number
 }
 
-export function resumoCompetencia(lancamentos: LancamentoCalculo[]): ResumoCompetencia {
-  const dre = calcularDRE(lancamentos, 'competencia', 0)
-  const faturamento = dre.receitaBruta
+export function resumoCompetencia(
+  lancamentos: LancamentoCalculo[],
+  depreciacao: number = 0,
+): ResumoCompetencia {
+  const dre = calcularDRE(lancamentos, 'competencia', depreciacao)
   const receitas = roundCents(dre.receitaBruta + dre.rendimentosFinanceiros)
-  const despesas = roundCents(
-    dre.impostosDeducoes +
-      dre.custosFornecedores +
-      dre.totalDespesasFixas +
-      dre.despesasFinanceiras +
-      dre.investimentos,
-  )
-  return { faturamento, receitas, despesas, lucro: roundCents(receitas - despesas) }
+  return {
+    faturamento: dre.receitaBruta,
+    receitas,
+    despesas: roundCents(receitas - dre.resultadoLiquido),
+    lucro: dre.resultadoLiquido,
+    margem: dre.margemLiquida,
+    investimentos: dre.investimentos,
+  }
 }
 
 /**

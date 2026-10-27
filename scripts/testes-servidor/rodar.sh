@@ -32,6 +32,9 @@ rodar() { # $1=nome  $2=script  $3=porta  $4=modo (api = script recebe URL e pas
     fi
     echo "$SAIDA" | grep -E 'FALHA|RESUMO|Traceback|Error' || true
     local F; F="$(echo "$SAIDA" | grep -c '^FALHA')"
+    # uma bateria que morre com erro de execução (Traceback) ou que nem imprime o resumo NÃO pode contar como "0 falhas"
+    if echo "$SAIDA" | grep -q 'Traceback'; then F=$((F + 1)); fi
+    if ! echo "$SAIDA" | grep -q 'RESUMO'; then F=$((F + 1)); echo "    FALHA: a bateria terminou sem resumo (erro de execução ou não subiu)"; fi
     local H; H="$(grep -c 'Failed to execute' "$D/pb.log" || true)"
     echo "    falhas: $F | hooks com erro de execução: $H"
     TOTAL_FALHAS=$((TOTAL_FALHAS + F + H))

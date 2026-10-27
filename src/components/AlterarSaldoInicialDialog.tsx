@@ -84,8 +84,10 @@ export const AlterarSaldoInicialDialog: React.FC<Props> = ({ conta, onFechar, on
         <DialogHeader>
           <DialogTitle>Alterar saldo inicial</DialogTitle>
           <DialogDescription>
-            Conta {conta?.nome}. O saldo inicial vale a partir da data de corte; a alteração fica registrada com o valor
-            anterior, o motivo, quem alterou e quando.
+            Conta {conta?.nome}. Hoje o Caixa soma o saldo inicial MAIS todos os lançamentos realizados da conta, de qualquer
+            data; a data de corte é só um registro por enquanto. Informe o saldo de abertura de modo que saldo inicial + lançamentos
+            realizados = saldo do extrato (não digite o saldo do extrato de hoje). A alteração fica registrada com o valor anterior,
+            o motivo, quem alterou e quando.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -107,7 +109,7 @@ export const AlterarSaldoInicialDialog: React.FC<Props> = ({ conta, onFechar, on
           </div>
           <div>
             <Label htmlFor="si-motivo">Motivo</Label>
-            <Input id="si-motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={300} placeholder="Ex.: saldo conferido no extrato de 27/10" />
+            <Input id="si-motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={300} placeholder="Ex.: saldo de abertura conferido com o contador" />
           </div>
           {erro && <p className="text-xs text-rose-600 font-medium">{erro}</p>}
         </div>

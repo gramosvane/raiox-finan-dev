@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   calcularDRE,
+  roundCents,
   resumoCompetencia,
   fluxoCaixaDoMes,
   LancamentoCalculo,
@@ -87,6 +88,32 @@ describe('resumoCompetencia (mesmo critério da DRE)', () => {
     const r = resumoCompetencia(base)
     expect(r.faturamento).toBe(7000)
     expect(r.receitas).toBe(7040)
+  })
+})
+
+describe('resumoCompetencia: lucro e margem são os da DRE (resultado líquido e margem líquida)', () => {
+  it('CAPEX fica fora do lucro, como na DRE, e vem em investimentos', () => {
+    const base = mesBase()
+    base.push(l({ tipo: 'despesa', valor: 2000, status: 'realizado', grupo_dre: 'investimento_capex', data_realizacao: '2026-10-29' }))
+    const r = resumoCompetencia(base)
+    expect(r.lucro).toBe(calcularDRE(base, 'competencia').resultadoLiquido)
+    expect(r.lucro).toBe(6750)
+    expect(r.investimentos).toBe(2000)
+  })
+
+  it('impostos, receita financeira e depreciação batem com a DRE (lucro, despesas e margem)', () => {
+    const base = mesBase()
+    base.push(
+      l({ tipo: 'despesa', valor: 420, status: 'realizado', grupo_dre: 'deducoes_tributos', data_realizacao: '2026-10-29' }),
+      l({ tipo: 'despesa', valor: 9.4, status: 'realizado', grupo_dre: 'despesa_financeira', data_realizacao: '2026-10-29' }),
+      l({ tipo: 'receita', valor: 40, status: 'realizado', grupo_dre: 'receita_financeira', data_realizacao: '2026-10-29' }),
+    )
+    const dre = calcularDRE(base, 'competencia', 100)
+    const r = resumoCompetencia(base, 100)
+    expect(r.lucro).toBe(dre.resultadoLiquido)
+    expect(r.margem).toBe(dre.margemLiquida)
+    expect(r.receitas).toBe(roundCents(dre.receitaBruta + dre.rendimentosFinanceiros))
+    expect(r.despesas).toBe(roundCents(r.receitas - r.lucro))
   })
 })
 
